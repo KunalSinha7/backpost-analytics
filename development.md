@@ -63,6 +63,8 @@ docker compose stop frontend
 And then start the local frontend development server:
 
 ```bash
+# First time only — create frontend/.env to point at the local backend:
+echo "VITE_API_URL=http://localhost:8000" > frontend/.env
 bun run dev
 ```
 
@@ -76,7 +78,7 @@ And then you can run the local development server for the backend:
 
 ```bash
 cd backend
-fastapi dev app/main.py
+uv run fastapi dev app/main.py
 ```
 
 ## Docker Compose in `localhost.tiangolo.com`
