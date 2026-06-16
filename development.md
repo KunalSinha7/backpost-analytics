@@ -125,13 +125,18 @@ After changing variables, make sure you restart the stack:
 docker compose watch
 ```
 
-## The .env file
+## The .env files
 
-The `.env` file is the one that contains all your configurations, generated keys and passwords, etc.
+Both `.env` files are gitignored and must be created locally before running the app. Example files are provided as starting points:
 
-Depending on your workflow, you could want to exclude it from Git, for example if your project is public. In that case, you would have to make sure to set up a way for your CI tools to obtain it while building or deploying your project.
+```bash
+cp .env.example .env
+cp frontend/.env.example frontend/.env
+```
 
-One way to do it could be to add each environment variable to your CI/CD system, and updating the `compose.yml` file to read that specific env var instead of reading the `.env` file.
+The root `.env` contains all Docker Compose and backend configuration (database credentials, secret key, SMTP, etc.). The `frontend/.env` is only needed when running the frontend outside of Docker — it points the API client at the local backend (`VITE_API_URL=http://localhost:8000`).
+
+Depending on your workflow, you could want to set up environment variables in your CI/CD system instead of committing an `.env` file, and update `compose.yml` to read from those variables directly.
 
 ## Pre-commits and code linting
 
