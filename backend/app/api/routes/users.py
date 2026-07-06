@@ -11,7 +11,11 @@ from app.api.deps import (
 )
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
-from app.repositories.user import create_user, get_user_by_email, update_user
+from app.repositories.user import (
+    create_user as create_user_in_db,
+    get_user_by_email,
+    update_user as update_user_in_db,
+)
 from app.models import (
     Message,
     UpdatePassword,
@@ -64,7 +68,7 @@ def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
             detail="The user with this email already exists in the system.",
         )
 
-    user = create_user(session=session, user_create=user_in)
+    user = create_user_in_db(session=session, user_create=user_in)
     if settings.emails_enabled and user_in.email:
         email_data = generate_new_account_email(
             email_to=user_in.email, username=user_in.email, password=user_in.password
@@ -154,7 +158,7 @@ def register_user(session: SessionDep, user_in: UserRegister) -> Any:
             detail="The user with this email already exists in the system",
         )
     user_create = UserCreate.model_validate(user_in)
-    user = create_user(session=session, user_create=user_create)
+    user = create_user_in_db(session=session, user_create=user_create)
     return user
 
 
@@ -206,7 +210,7 @@ def update_user(
                 status_code=409, detail="User with this email already exists"
             )
 
-    db_user = update_user(session=session, db_user=db_user, user_in=user_in)
+    db_user = update_user_in_db(session=session, db_user=db_user, user_in=user_in)
     return db_user
 
 
