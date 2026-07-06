@@ -1,4 +1,4 @@
-# FastAPI Project - Backend
+# Backpost Analytics - Backend
 
 ## Requirements
 

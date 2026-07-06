@@ -15,9 +15,14 @@ import { Route as RecoverPasswordRouteImport } from './routes/recover-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
+import { Route as LayoutSoccerRouteImport } from './routes/_layout/soccer'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
-import { Route as LayoutItemsRouteImport } from './routes/_layout/items'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
+import { Route as LayoutSoccerIndexRouteImport } from './routes/_layout/soccer/index'
+import { Route as LayoutSoccerMatchesRouteImport } from './routes/_layout/soccer/matches'
+import { Route as LayoutSoccerLineupsRouteImport } from './routes/_layout/soccer/lineups'
+import { Route as LayoutSoccerIngestRouteImport } from './routes/_layout/soccer/ingest'
+import { Route as LayoutSoccerEventsRouteImport } from './routes/_layout/soccer/events'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -48,20 +53,45 @@ const LayoutIndexRoute = LayoutIndexRouteImport.update({
   path: '/',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutSoccerRoute = LayoutSoccerRouteImport.update({
+  id: '/soccer',
+  path: '/soccer',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => LayoutRoute,
-} as any)
-const LayoutItemsRoute = LayoutItemsRouteImport.update({
-  id: '/items',
-  path: '/items',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutAdminRoute = LayoutAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
   getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutSoccerIndexRoute = LayoutSoccerIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LayoutSoccerRoute,
+} as any)
+const LayoutSoccerMatchesRoute = LayoutSoccerMatchesRouteImport.update({
+  id: '/matches',
+  path: '/matches',
+  getParentRoute: () => LayoutSoccerRoute,
+} as any)
+const LayoutSoccerLineupsRoute = LayoutSoccerLineupsRouteImport.update({
+  id: '/lineups',
+  path: '/lineups',
+  getParentRoute: () => LayoutSoccerRoute,
+} as any)
+const LayoutSoccerIngestRoute = LayoutSoccerIngestRouteImport.update({
+  id: '/ingest',
+  path: '/ingest',
+  getParentRoute: () => LayoutSoccerRoute,
+} as any)
+const LayoutSoccerEventsRoute = LayoutSoccerEventsRouteImport.update({
+  id: '/events',
+  path: '/events',
+  getParentRoute: () => LayoutSoccerRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -71,8 +101,13 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
-  '/items': typeof LayoutItemsRoute
   '/settings': typeof LayoutSettingsRoute
+  '/soccer': typeof LayoutSoccerRouteWithChildren
+  '/soccer/events': typeof LayoutSoccerEventsRoute
+  '/soccer/ingest': typeof LayoutSoccerIngestRoute
+  '/soccer/lineups': typeof LayoutSoccerLineupsRoute
+  '/soccer/matches': typeof LayoutSoccerMatchesRoute
+  '/soccer/': typeof LayoutSoccerIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -80,9 +115,13 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
-  '/items': typeof LayoutItemsRoute
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
+  '/soccer/events': typeof LayoutSoccerEventsRoute
+  '/soccer/ingest': typeof LayoutSoccerIngestRoute
+  '/soccer/lineups': typeof LayoutSoccerLineupsRoute
+  '/soccer/matches': typeof LayoutSoccerMatchesRoute
+  '/soccer': typeof LayoutSoccerIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -92,9 +131,14 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/_layout/admin': typeof LayoutAdminRoute
-  '/_layout/items': typeof LayoutItemsRoute
   '/_layout/settings': typeof LayoutSettingsRoute
+  '/_layout/soccer': typeof LayoutSoccerRouteWithChildren
   '/_layout/': typeof LayoutIndexRoute
+  '/_layout/soccer/events': typeof LayoutSoccerEventsRoute
+  '/_layout/soccer/ingest': typeof LayoutSoccerIngestRoute
+  '/_layout/soccer/lineups': typeof LayoutSoccerLineupsRoute
+  '/_layout/soccer/matches': typeof LayoutSoccerMatchesRoute
+  '/_layout/soccer/': typeof LayoutSoccerIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -105,8 +149,13 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/admin'
-    | '/items'
     | '/settings'
+    | '/soccer'
+    | '/soccer/events'
+    | '/soccer/ingest'
+    | '/soccer/lineups'
+    | '/soccer/matches'
+    | '/soccer/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -114,9 +163,13 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/admin'
-    | '/items'
     | '/settings'
     | '/'
+    | '/soccer/events'
+    | '/soccer/ingest'
+    | '/soccer/lineups'
+    | '/soccer/matches'
+    | '/soccer'
   id:
     | '__root__'
     | '/_layout'
@@ -125,9 +178,14 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/_layout/admin'
-    | '/_layout/items'
     | '/_layout/settings'
+    | '/_layout/soccer'
     | '/_layout/'
+    | '/_layout/soccer/events'
+    | '/_layout/soccer/ingest'
+    | '/_layout/soccer/lineups'
+    | '/_layout/soccer/matches'
+    | '/_layout/soccer/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -182,18 +240,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutIndexRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/soccer': {
+      id: '/_layout/soccer'
+      path: '/soccer'
+      fullPath: '/soccer'
+      preLoaderRoute: typeof LayoutSoccerRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/settings': {
       id: '/_layout/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof LayoutSettingsRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/items': {
-      id: '/_layout/items'
-      path: '/items'
-      fullPath: '/items'
-      preLoaderRoute: typeof LayoutItemsRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/admin': {
@@ -203,20 +261,75 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAdminRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/soccer/': {
+      id: '/_layout/soccer/'
+      path: '/'
+      fullPath: '/soccer/'
+      preLoaderRoute: typeof LayoutSoccerIndexRouteImport
+      parentRoute: typeof LayoutSoccerRoute
+    }
+    '/_layout/soccer/matches': {
+      id: '/_layout/soccer/matches'
+      path: '/matches'
+      fullPath: '/soccer/matches'
+      preLoaderRoute: typeof LayoutSoccerMatchesRouteImport
+      parentRoute: typeof LayoutSoccerRoute
+    }
+    '/_layout/soccer/lineups': {
+      id: '/_layout/soccer/lineups'
+      path: '/lineups'
+      fullPath: '/soccer/lineups'
+      preLoaderRoute: typeof LayoutSoccerLineupsRouteImport
+      parentRoute: typeof LayoutSoccerRoute
+    }
+    '/_layout/soccer/ingest': {
+      id: '/_layout/soccer/ingest'
+      path: '/ingest'
+      fullPath: '/soccer/ingest'
+      preLoaderRoute: typeof LayoutSoccerIngestRouteImport
+      parentRoute: typeof LayoutSoccerRoute
+    }
+    '/_layout/soccer/events': {
+      id: '/_layout/soccer/events'
+      path: '/events'
+      fullPath: '/soccer/events'
+      preLoaderRoute: typeof LayoutSoccerEventsRouteImport
+      parentRoute: typeof LayoutSoccerRoute
+    }
   }
 }
 
+interface LayoutSoccerRouteChildren {
+  LayoutSoccerEventsRoute: typeof LayoutSoccerEventsRoute
+  LayoutSoccerIngestRoute: typeof LayoutSoccerIngestRoute
+  LayoutSoccerLineupsRoute: typeof LayoutSoccerLineupsRoute
+  LayoutSoccerMatchesRoute: typeof LayoutSoccerMatchesRoute
+  LayoutSoccerIndexRoute: typeof LayoutSoccerIndexRoute
+}
+
+const LayoutSoccerRouteChildren: LayoutSoccerRouteChildren = {
+  LayoutSoccerEventsRoute: LayoutSoccerEventsRoute,
+  LayoutSoccerIngestRoute: LayoutSoccerIngestRoute,
+  LayoutSoccerLineupsRoute: LayoutSoccerLineupsRoute,
+  LayoutSoccerMatchesRoute: LayoutSoccerMatchesRoute,
+  LayoutSoccerIndexRoute: LayoutSoccerIndexRoute,
+}
+
+const LayoutSoccerRouteWithChildren = LayoutSoccerRoute._addFileChildren(
+  LayoutSoccerRouteChildren,
+)
+
 interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
-  LayoutItemsRoute: typeof LayoutItemsRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
+  LayoutSoccerRoute: typeof LayoutSoccerRouteWithChildren
   LayoutIndexRoute: typeof LayoutIndexRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminRoute: LayoutAdminRoute,
-  LayoutItemsRoute: LayoutItemsRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
+  LayoutSoccerRoute: LayoutSoccerRouteWithChildren,
   LayoutIndexRoute: LayoutIndexRoute,
 }
 
