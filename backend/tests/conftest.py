@@ -2,7 +2,7 @@ from collections.abc import Generator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, delete
+from sqlmodel import Session, delete, select
 
 from app.core.config import settings
 from app.core.db import engine, init_db
@@ -32,9 +32,10 @@ def db() -> Generator[Session, None, None]:
     with Session(engine) as session:
         init_db(session)
         _wipe_soccer_data(session)
+        pre_existing_user_ids = {u.id for u in session.exec(select(User)).all()}
         yield session
         _wipe_soccer_data(session)
-        session.execute(delete(User).where(User.email != settings.FIRST_SUPERUSER))
+        session.execute(delete(User).where(User.id.not_in(pre_existing_user_ids)))
         session.commit()
 
 
