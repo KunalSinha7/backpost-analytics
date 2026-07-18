@@ -34,9 +34,8 @@ def db() -> Generator[Session, None, None]:
         _wipe_soccer_data(session)
         yield session
         _wipe_soccer_data(session)
-        session.execute(delete(User))
+        session.execute(delete(User).where(User.email != settings.FIRST_SUPERUSER))
         session.commit()
-        init_db(session)  # restore superuser so the dev DB is usable after tests run
 
 
 @pytest.fixture(scope="module")
