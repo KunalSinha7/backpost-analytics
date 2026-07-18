@@ -27,5 +27,4 @@ class LineupRepository:
         return list(players), count
 
     def add_batch(self, lineups: list[Lineup]) -> None:
-        for lineup in lineups:
-            self.session.add(lineup)
+        self.session.add_all(lineups)

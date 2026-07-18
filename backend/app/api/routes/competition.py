@@ -1,12 +1,11 @@
 import logging
-from typing import Annotated, Any
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from sqlmodel import SQLModel
 
-from app.api.deps import SessionDep, get_current_active_superuser
+from app.api.deps import SessionDep, SuperuserDep
 from app.exceptions.competition import CompetitionNotFoundError
-from app.models import User
 from app.models.competition import CompetitionPublic, CompetitionsPublic
 from app.repositories.competition import CompetitionRepository
 from app.repositories.match import MatchRepository
@@ -15,7 +14,6 @@ from app.services.match import MatchService
 
 router = APIRouter(prefix="/competitions", tags=["soccer"])
 logger = logging.getLogger(__name__)
-SuperuserDep = Annotated[User, Depends(get_current_active_superuser)]
 
 
 class IngestResult(SQLModel):
