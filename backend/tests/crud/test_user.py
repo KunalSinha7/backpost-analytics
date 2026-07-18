@@ -98,18 +98,19 @@ def test_authenticate_user_with_bcrypt_upgrades_to_argon2(db: Session) -> None:
     email = random_email()
     password = random_lower_string()
 
-    # Create a bcrypt hash directly (simulating legacy password)
+    user = crud.create_user(
+        session=db, user_create=UserCreate(email=email, password=password)
+    )
+
+    # Override hash to bcrypt to simulate a legacy user
     bcrypt_hasher = BcryptHasher()
     bcrypt_hash = bcrypt_hasher.hash(password)
-    assert bcrypt_hash.startswith("$2")  # bcrypt hashes start with $2
-
-    # Create user with bcrypt hash directly in the database
-    user = User(email=email, hashed_password=bcrypt_hash)
+    assert bcrypt_hash.startswith("$2")
+    user.hashed_password = bcrypt_hash
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    # Verify the hash is bcrypt before authentication
     assert user.hashed_password.startswith("$2")
 
     # Authenticate - this should upgrade the hash to argon2
