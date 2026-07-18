@@ -9,31 +9,92 @@ export type Body_login_login_access_token = {
     client_secret?: (string | null);
 };
 
+export type CompetitionPublic = {
+    statsbomb_id: number;
+    season_id: number;
+    country_name: string;
+    competition_name: string;
+    competition_gender: string;
+    competition_youth?: boolean;
+    competition_international?: boolean;
+    season_name: string;
+    match_updated?: (string | null);
+    match_available?: (string | null);
+    match_updated_360?: (string | null);
+    match_available_360?: (string | null);
+    id: string;
+};
+
+export type CompetitionsPublic = {
+    data: Array<CompetitionPublic>;
+    count: number;
+};
+
+export type EventPublic = {
+    statsbomb_id: string;
+    match_id: string;
+    index: number;
+    period: number;
+    timestamp?: (string | null);
+    minute: number;
+    second: number;
+    type_name: string;
+    possession?: (number | null);
+    possession_team_name?: (string | null);
+    play_pattern_name?: (string | null);
+    team: string;
+    player?: (string | null);
+    location_x?: (number | null);
+    location_y?: (number | null);
+    duration?: (number | null);
+    under_pressure?: (boolean | null);
+    off_camera?: (boolean | null);
+    out?: (boolean | null);
+    id: string;
+};
+
+export type EventsPublic = {
+    data: Array<EventPublic>;
+    count: number;
+};
+
+export type Frame360Public = {
+    match_id: string;
+    event_statsbomb_id: string;
+    visible_area?: Array<unknown>;
+    freeze_frame?: Array<unknown>;
+    id: string;
+};
+
+export type Frames360Public = {
+    data: Array<Frame360Public>;
+    count: number;
+};
+
 export type HTTPValidationError = {
     detail?: Array<ValidationError>;
 };
 
-export type ItemCreate = {
-    title: string;
-    description?: (string | null);
+export type IngestResult = {
+    imported_competitions: number;
+    imported_matches: number;
 };
 
-export type ItemPublic = {
-    title: string;
-    description?: (string | null);
+export type LineupPublic = {
+    match_id: string;
+    team_name: string;
+    statsbomb_player_id: number;
+    player_name: string;
+    player_nickname?: (string | null);
+    jersey_number: number;
+    country_name?: (string | null);
+    started?: boolean;
     id: string;
-    owner_id: string;
-    created_at?: (string | null);
 };
 
-export type ItemsPublic = {
-    data: Array<ItemPublic>;
+export type LineupsPublic = {
+    data: Array<LineupPublic>;
     count: number;
-};
-
-export type ItemUpdate = {
-    title?: (string | null);
-    description?: (string | null);
 };
 
 export type Message = {
@@ -50,6 +111,47 @@ export type PrivateUserCreate = {
     password: string;
     full_name: string;
     is_verified?: boolean;
+};
+
+export type SoccerMatchesPublic = {
+    data: Array<SoccerMatchPublic>;
+    count: number;
+};
+
+export type SoccerMatchPublic = {
+    statsbomb_id: number;
+    competition_id: string;
+    match_date: string;
+    kick_off?: (string | null);
+    home_team: string;
+    away_team: string;
+    home_score?: (number | null);
+    away_score?: (number | null);
+    stadium?: (string | null);
+    referee?: (string | null);
+    match_week?: (number | null);
+    competition_stage_name?: (string | null);
+    home_team_gender?: (string | null);
+    away_team_gender?: (string | null);
+    home_team_country_name?: (string | null);
+    away_team_country_name?: (string | null);
+    home_team_group?: (string | null);
+    away_team_group?: (string | null);
+    home_manager_name?: (string | null);
+    away_manager_name?: (string | null);
+    match_status?: (string | null);
+    last_updated?: (string | null);
+    match_status_360?: (string | null);
+    id: string;
+};
+
+export type StatsBombCompetition = {
+    competition_id: number;
+    competition_name: string;
+    country_name: string;
+    season_id: number;
+    season_name: string;
+    has_360: boolean;
 };
 
 export type Token = {
@@ -113,38 +215,6 @@ export type ValidationError = {
     };
 };
 
-export type ItemsReadItemsData = {
-    limit?: number;
-    skip?: number;
-};
-
-export type ItemsReadItemsResponse = (ItemsPublic);
-
-export type ItemsCreateItemData = {
-    requestBody: ItemCreate;
-};
-
-export type ItemsCreateItemResponse = (ItemPublic);
-
-export type ItemsReadItemData = {
-    id: string;
-};
-
-export type ItemsReadItemResponse = (ItemPublic);
-
-export type ItemsUpdateItemData = {
-    id: string;
-    requestBody: ItemUpdate;
-};
-
-export type ItemsUpdateItemResponse = (ItemPublic);
-
-export type ItemsDeleteItemData = {
-    id: string;
-};
-
-export type ItemsDeleteItemResponse = (Message);
-
 export type LoginLoginAccessTokenData = {
     formData: Body_login_login_access_token;
 };
@@ -176,6 +246,57 @@ export type PrivateCreateUserData = {
 };
 
 export type PrivateCreateUserResponse = (UserPublic);
+
+export type ReadCompetitionsData = {
+    limit?: number;
+    skip?: number;
+};
+
+export type ReadCompetitionsResponse = (CompetitionsPublic);
+
+export type IngestSoccerDataResponse = (IngestResult);
+
+export type GetAvailableCompetitionsResponse = (Array<StatsBombCompetition>);
+
+export type ReadMatchesData = {
+    competitionId?: (string | null);
+    hasEvents?: boolean;
+    limit?: number;
+    skip?: number;
+};
+
+export type ReadMatchesResponse = (SoccerMatchesPublic);
+
+export type ReadEventsData = {
+    limit?: number;
+    matchId: string;
+    skip?: number;
+};
+
+export type ReadEventsResponse = (EventsPublic);
+
+export type IngestEventsData = {
+    competitionStatsbombId?: number;
+    seasonId?: number;
+};
+
+export type IngestEventsResponse = ({
+    [key: string]: (string);
+});
+
+export type ReadLineupsData = {
+    matchId: string;
+};
+
+export type ReadLineupsResponse = (LineupsPublic);
+
+export type ReadFramesData = {
+    limit?: number;
+    matchId: string;
+    skip?: number;
+};
+
+export type ReadFramesResponse = (Frames360Public);
 
 export type UsersReadUsersData = {
     limit?: number;

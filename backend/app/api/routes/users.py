@@ -2,9 +2,8 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import col, delete, func, select
+from sqlmodel import col, func, select
 
-from app import crud
 from app.api.deps import (
     CurrentUser,
     SessionDep,
@@ -13,7 +12,6 @@ from app.api.deps import (
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
 from app.models import (
-    Item,
     Message,
     UpdatePassword,
     User,
@@ -23,6 +21,15 @@ from app.models import (
     UsersPublic,
     UserUpdate,
     UserUpdateMe,
+)
+from app.repositories.user import (
+    create_user as create_user_in_db,
+)
+from app.repositories.user import (
+    get_user_by_email,
+)
+from app.repositories.user import (
+    update_user as update_user_in_db,
 )
 from app.utils import generate_new_account_email, send_email
 
@@ -58,14 +65,14 @@ def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     """
     Create new user.
     """
-    user = crud.get_user_by_email(session=session, email=user_in.email)
+    user = get_user_by_email(session=session, email=user_in.email)
     if user:
         raise HTTPException(
             status_code=400,
             detail="The user with this email already exists in the system.",
         )
 
-    user = crud.create_user(session=session, user_create=user_in)
+    user = create_user_in_db(session=session, user_create=user_in)
     if settings.emails_enabled and user_in.email:
         email_data = generate_new_account_email(
             email_to=user_in.email, username=user_in.email, password=user_in.password
@@ -87,7 +94,7 @@ def update_user_me(
     """
 
     if user_in.email:
-        existing_user = crud.get_user_by_email(session=session, email=user_in.email)
+        existing_user = get_user_by_email(session=session, email=user_in.email)
         if existing_user and existing_user.id != current_user.id:
             raise HTTPException(
                 status_code=409, detail="User with this email already exists"
@@ -148,14 +155,14 @@ def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     """
     Create new user without the need to be logged in.
     """
-    user = crud.get_user_by_email(session=session, email=user_in.email)
+    user = get_user_by_email(session=session, email=user_in.email)
     if user:
         raise HTTPException(
             status_code=400,
             detail="The user with this email already exists in the system",
         )
     user_create = UserCreate.model_validate(user_in)
-    user = crud.create_user(session=session, user_create=user_create)
+    user = create_user_in_db(session=session, user_create=user_create)
     return user
 
 
@@ -201,13 +208,13 @@ def update_user(
             detail="The user with this id does not exist in the system",
         )
     if user_in.email:
-        existing_user = crud.get_user_by_email(session=session, email=user_in.email)
+        existing_user = get_user_by_email(session=session, email=user_in.email)
         if existing_user and existing_user.id != user_id:
             raise HTTPException(
                 status_code=409, detail="User with this email already exists"
             )
 
-    db_user = crud.update_user(session=session, db_user=db_user, user_in=user_in)
+    db_user = update_user_in_db(session=session, db_user=db_user, user_in=user_in)
     return db_user
 
 
@@ -225,8 +232,6 @@ def delete_user(
         raise HTTPException(
             status_code=403, detail="Super users are not allowed to delete themselves"
         )
-    statement = delete(Item).where(col(Item.owner_id) == user_id)
-    session.exec(statement)
     session.delete(user)
     session.commit()
     return Message(message="User deleted successfully")

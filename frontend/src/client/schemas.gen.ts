@@ -57,6 +57,369 @@ export const Body_login_login_access_tokenSchema = {
     title: 'Body_login-login_access_token'
 } as const;
 
+export const CompetitionPublicSchema = {
+    properties: {
+        statsbomb_id: {
+            type: 'integer',
+            title: 'Statsbomb Id'
+        },
+        season_id: {
+            type: 'integer',
+            title: 'Season Id'
+        },
+        country_name: {
+            type: 'string',
+            maxLength: 100,
+            title: 'Country Name'
+        },
+        competition_name: {
+            type: 'string',
+            maxLength: 255,
+            title: 'Competition Name'
+        },
+        competition_gender: {
+            type: 'string',
+            maxLength: 20,
+            title: 'Competition Gender'
+        },
+        competition_youth: {
+            type: 'boolean',
+            title: 'Competition Youth',
+            default: false
+        },
+        competition_international: {
+            type: 'boolean',
+            title: 'Competition International',
+            default: false
+        },
+        season_name: {
+            type: 'string',
+            maxLength: 100,
+            title: 'Season Name'
+        },
+        match_updated: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 50
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Match Updated'
+        },
+        match_available: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 50
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Match Available'
+        },
+        match_updated_360: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 50
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Match Updated 360'
+        },
+        match_available_360: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 50
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Match Available 360'
+        },
+        id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Id'
+        }
+    },
+    type: 'object',
+    required: ['statsbomb_id', 'season_id', 'country_name', 'competition_name', 'competition_gender', 'season_name', 'id'],
+    title: 'CompetitionPublic'
+} as const;
+
+export const CompetitionsPublicSchema = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/CompetitionPublic'
+            },
+            type: 'array',
+            title: 'Data'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        }
+    },
+    type: 'object',
+    required: ['data', 'count'],
+    title: 'CompetitionsPublic'
+} as const;
+
+export const EventPublicSchema = {
+    properties: {
+        statsbomb_id: {
+            type: 'string',
+            maxLength: 36,
+            title: 'Statsbomb Id'
+        },
+        match_id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Match Id'
+        },
+        index: {
+            type: 'integer',
+            title: 'Index'
+        },
+        period: {
+            type: 'integer',
+            title: 'Period'
+        },
+        timestamp: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 20
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Timestamp'
+        },
+        minute: {
+            type: 'integer',
+            title: 'Minute'
+        },
+        second: {
+            type: 'integer',
+            title: 'Second'
+        },
+        type_name: {
+            type: 'string',
+            maxLength: 100,
+            title: 'Type Name'
+        },
+        possession: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Possession'
+        },
+        possession_team_name: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 255
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Possession Team Name'
+        },
+        play_pattern_name: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 100
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Play Pattern Name'
+        },
+        team: {
+            type: 'string',
+            maxLength: 255,
+            title: 'Team'
+        },
+        player: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 255
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Player'
+        },
+        location_x: {
+            anyOf: [
+                {
+                    type: 'number'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Location X'
+        },
+        location_y: {
+            anyOf: [
+                {
+                    type: 'number'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Location Y'
+        },
+        duration: {
+            anyOf: [
+                {
+                    type: 'number'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Duration'
+        },
+        under_pressure: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Under Pressure'
+        },
+        off_camera: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Off Camera'
+        },
+        out: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Out'
+        },
+        id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Id'
+        }
+    },
+    type: 'object',
+    required: ['statsbomb_id', 'match_id', 'index', 'period', 'minute', 'second', 'type_name', 'team', 'id'],
+    title: 'EventPublic'
+} as const;
+
+export const EventsPublicSchema = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/EventPublic'
+            },
+            type: 'array',
+            title: 'Data'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        }
+    },
+    type: 'object',
+    required: ['data', 'count'],
+    title: 'EventsPublic'
+} as const;
+
+export const Frame360PublicSchema = {
+    properties: {
+        match_id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Match Id'
+        },
+        event_statsbomb_id: {
+            type: 'string',
+            maxLength: 36,
+            title: 'Event Statsbomb Id'
+        },
+        visible_area: {
+            items: {},
+            type: 'array',
+            title: 'Visible Area'
+        },
+        freeze_frame: {
+            items: {},
+            type: 'array',
+            title: 'Freeze Frame'
+        },
+        id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Id'
+        }
+    },
+    type: 'object',
+    required: ['match_id', 'event_statsbomb_id', 'id'],
+    title: 'Frame360Public'
+} as const;
+
+export const Frames360PublicSchema = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/Frame360Public'
+            },
+            type: 'array',
+            title: 'Data'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        }
+    },
+    type: 'object',
+    required: ['data', 'count'],
+    title: 'Frames360Public'
+} as const;
+
 export const HTTPValidationErrorSchema = {
     properties: {
         detail: {
@@ -71,41 +434,44 @@ export const HTTPValidationErrorSchema = {
     title: 'HTTPValidationError'
 } as const;
 
-export const ItemCreateSchema = {
+export const IngestResultSchema = {
     properties: {
-        title: {
-            type: 'string',
-            maxLength: 255,
-            minLength: 1,
-            title: 'Title'
+        imported_competitions: {
+            type: 'integer',
+            title: 'Imported Competitions'
         },
-        description: {
-            anyOf: [
-                {
-                    type: 'string',
-                    maxLength: 255
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Description'
+        imported_matches: {
+            type: 'integer',
+            title: 'Imported Matches'
         }
     },
     type: 'object',
-    required: ['title'],
-    title: 'ItemCreate'
+    required: ['imported_competitions', 'imported_matches'],
+    title: 'IngestResult'
 } as const;
 
-export const ItemPublicSchema = {
+export const LineupPublicSchema = {
     properties: {
-        title: {
+        match_id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Match Id'
+        },
+        team_name: {
             type: 'string',
             maxLength: 255,
-            minLength: 1,
-            title: 'Title'
+            title: 'Team Name'
         },
-        description: {
+        statsbomb_player_id: {
+            type: 'integer',
+            title: 'Statsbomb Player Id'
+        },
+        player_name: {
+            type: 'string',
+            maxLength: 255,
+            title: 'Player Name'
+        },
+        player_nickname: {
             anyOf: [
                 {
                     type: 'string',
@@ -115,73 +481,45 @@ export const ItemPublicSchema = {
                     type: 'null'
                 }
             ],
-            title: 'Description'
+            title: 'Player Nickname'
+        },
+        jersey_number: {
+            type: 'integer',
+            title: 'Jersey Number'
+        },
+        country_name: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 100
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Country Name'
+        },
+        started: {
+            type: 'boolean',
+            title: 'Started',
+            default: false
         },
         id: {
             type: 'string',
             format: 'uuid',
             title: 'Id'
-        },
-        owner_id: {
-            type: 'string',
-            format: 'uuid',
-            title: 'Owner Id'
-        },
-        created_at: {
-            anyOf: [
-                {
-                    type: 'string',
-                    format: 'date-time'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Created At'
         }
     },
     type: 'object',
-    required: ['title', 'id', 'owner_id'],
-    title: 'ItemPublic'
+    required: ['match_id', 'team_name', 'statsbomb_player_id', 'player_name', 'jersey_number', 'id'],
+    title: 'LineupPublic'
 } as const;
 
-export const ItemUpdateSchema = {
-    properties: {
-        title: {
-            anyOf: [
-                {
-                    type: 'string',
-                    maxLength: 255,
-                    minLength: 1
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Title'
-        },
-        description: {
-            anyOf: [
-                {
-                    type: 'string',
-                    maxLength: 255
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Description'
-        }
-    },
-    type: 'object',
-    title: 'ItemUpdate'
-} as const;
-
-export const ItemsPublicSchema = {
+export const LineupsPublicSchema = {
     properties: {
         data: {
             items: {
-                '$ref': '#/components/schemas/ItemPublic'
+                '$ref': '#/components/schemas/LineupPublic'
             },
             type: 'array',
             title: 'Data'
@@ -193,7 +531,7 @@ export const ItemsPublicSchema = {
     },
     type: 'object',
     required: ['data', 'count'],
-    title: 'ItemsPublic'
+    title: 'LineupsPublic'
 } as const;
 
 export const MessageSchema = {
@@ -249,6 +587,307 @@ export const PrivateUserCreateSchema = {
     type: 'object',
     required: ['email', 'password', 'full_name'],
     title: 'PrivateUserCreate'
+} as const;
+
+export const SoccerMatchPublicSchema = {
+    properties: {
+        statsbomb_id: {
+            type: 'integer',
+            title: 'Statsbomb Id'
+        },
+        competition_id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Competition Id'
+        },
+        match_date: {
+            type: 'string',
+            maxLength: 20,
+            title: 'Match Date'
+        },
+        kick_off: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 20
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Kick Off'
+        },
+        home_team: {
+            type: 'string',
+            maxLength: 255,
+            title: 'Home Team'
+        },
+        away_team: {
+            type: 'string',
+            maxLength: 255,
+            title: 'Away Team'
+        },
+        home_score: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Home Score'
+        },
+        away_score: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Away Score'
+        },
+        stadium: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 255
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Stadium'
+        },
+        referee: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 255
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Referee'
+        },
+        match_week: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Match Week'
+        },
+        competition_stage_name: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 100
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Competition Stage Name'
+        },
+        home_team_gender: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 20
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Home Team Gender'
+        },
+        away_team_gender: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 20
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Away Team Gender'
+        },
+        home_team_country_name: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 100
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Home Team Country Name'
+        },
+        away_team_country_name: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 100
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Away Team Country Name'
+        },
+        home_team_group: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 50
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Home Team Group'
+        },
+        away_team_group: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 50
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Away Team Group'
+        },
+        home_manager_name: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 255
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Home Manager Name'
+        },
+        away_manager_name: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 255
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Away Manager Name'
+        },
+        match_status: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 50
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Match Status'
+        },
+        last_updated: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 50
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Last Updated'
+        },
+        match_status_360: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 50
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Match Status 360'
+        },
+        id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Id'
+        }
+    },
+    type: 'object',
+    required: ['statsbomb_id', 'competition_id', 'match_date', 'home_team', 'away_team', 'id'],
+    title: 'SoccerMatchPublic'
+} as const;
+
+export const SoccerMatchesPublicSchema = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/SoccerMatchPublic'
+            },
+            type: 'array',
+            title: 'Data'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        }
+    },
+    type: 'object',
+    required: ['data', 'count'],
+    title: 'SoccerMatchesPublic'
+} as const;
+
+export const StatsBombCompetitionSchema = {
+    properties: {
+        competition_id: {
+            type: 'integer',
+            title: 'Competition Id'
+        },
+        competition_name: {
+            type: 'string',
+            title: 'Competition Name'
+        },
+        country_name: {
+            type: 'string',
+            title: 'Country Name'
+        },
+        season_id: {
+            type: 'integer',
+            title: 'Season Id'
+        },
+        season_name: {
+            type: 'string',
+            title: 'Season Name'
+        },
+        has_360: {
+            type: 'boolean',
+            title: 'Has 360'
+        }
+    },
+    type: 'object',
+    required: ['competition_id', 'competition_name', 'country_name', 'season_id', 'season_name', 'has_360'],
+    title: 'StatsBombCompetition'
 } as const;
 
 export const TokenSchema = {
