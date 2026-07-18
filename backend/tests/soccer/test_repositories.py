@@ -17,7 +17,6 @@ from tests.utils.soccer import (
     create_match,
 )
 
-
 # ── CompetitionRepository ──────────────────────────────────────────────────
 
 
@@ -158,8 +157,12 @@ def test_lineup_has_lineups_for_match(db: Session) -> None:
 def test_lineup_list_by_match(db: Session) -> None:
     comp = create_competition(db, statsbomb_id=4002, season_id=4002)
     match = create_match(db, comp.id, statsbomb_id=40002)
-    create_lineup(db, match.id, player_name="Alice", jersey_number=1, statsbomb_player_id=4101)
-    create_lineup(db, match.id, player_name="Bob", jersey_number=2, statsbomb_player_id=4102)
+    create_lineup(
+        db, match.id, player_name="Alice", jersey_number=1, statsbomb_player_id=4101
+    )
+    create_lineup(
+        db, match.id, player_name="Bob", jersey_number=2, statsbomb_player_id=4102
+    )
 
     repo = LineupRepository(db)
     players, count = repo.list_by_match(match.id)
