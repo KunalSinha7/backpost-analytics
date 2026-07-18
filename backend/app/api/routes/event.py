@@ -2,7 +2,7 @@ import logging
 import uuid
 from typing import Annotated, Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlmodel import Session
 
 from app.api.deps import SessionDep, get_current_active_superuser
@@ -59,19 +59,19 @@ def _run_ingest(competition_statsbomb_id: int, season_id: int) -> None:
     with Session(engine) as session:
         match_repo = MatchRepository(session)
         try:
-            n_events = EventService(EventRepository(session), match_repo).ingest_for_competition(
-                competition_statsbomb_id, season_id, session
-            )
+            n_events = EventService(
+                EventRepository(session), match_repo
+            ).ingest_for_competition(competition_statsbomb_id, season_id, session)
             logger.info("Background ingest complete: %d events", n_events)
         except StatsBombFetchError as e:
             logger.error("Background event ingest failed: %s", e)
 
-        n_lineups = LineupService(LineupRepository(session), match_repo).ingest_for_competition(
-            competition_statsbomb_id, season_id, session
-        )
+        n_lineups = LineupService(
+            LineupRepository(session), match_repo
+        ).ingest_for_competition(competition_statsbomb_id, season_id, session)
         logger.info("Background lineup ingest complete: %d players", n_lineups)
 
-        n_frames = Frame360Service(Frame360Repository(session), match_repo).ingest_for_competition(
-            competition_statsbomb_id, season_id, session
-        )
+        n_frames = Frame360Service(
+            Frame360Repository(session), match_repo
+        ).ingest_for_competition(competition_statsbomb_id, season_id, session)
         logger.info("Background 360 ingest complete: %d frames", n_frames)

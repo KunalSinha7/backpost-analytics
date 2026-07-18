@@ -8,17 +8,33 @@ from app.core.config import settings
 from app.core.db import engine, init_db
 from app.main import app
 from app.models import User
+from app.models.competition import Competition
+from app.models.event import Event
+from app.models.frame360 import Frame360
+from app.models.lineup import Lineup
+from app.models.match import SoccerMatch
 from tests.utils.user import authentication_token_from_email
 from tests.utils.utils import get_superuser_token_headers
+
+
+def _wipe_soccer_data(session: Session) -> None:
+    """Delete all soccer test data respecting FK order: children before parents."""
+    session.execute(delete(Event))
+    session.execute(delete(Frame360))
+    session.execute(delete(Lineup))
+    session.execute(delete(SoccerMatch))
+    session.execute(delete(Competition))
+    session.commit()
 
 
 @pytest.fixture(scope="session", autouse=True)
 def db() -> Generator[Session, None, None]:
     with Session(engine) as session:
         init_db(session)
+        _wipe_soccer_data(session)
         yield session
-        statement = delete(User)
-        session.execute(statement)
+        _wipe_soccer_data(session)
+        session.execute(delete(User))
         session.commit()
 
 

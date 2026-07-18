@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import APIRouter
 
 from app.api.deps import SessionDep
-from app.models.match import SoccerMatchPublic, SoccerMatchesPublic
+from app.models.match import SoccerMatchesPublic, SoccerMatchPublic
 from app.repositories.match import MatchRepository
 
 router = APIRouter(prefix="/matches", tags=["soccer"])

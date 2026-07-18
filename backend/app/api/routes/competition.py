@@ -26,7 +26,7 @@ class IngestResult(SQLModel):
 @router.get("/", response_model=CompetitionsPublic, operation_id="readCompetitions")
 def read_competitions(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
     repo = CompetitionRepository(session)
-    rows, count = repo.list(skip=skip, limit=limit)
+    rows, count = repo.list_all(skip=skip, limit=limit)
     return CompetitionsPublic(
         data=[CompetitionPublic.model_validate(r) for r in rows],
         count=count,
@@ -55,11 +55,16 @@ class StatsBombCompetition(SQLModel):
     has_360: bool
 
 
-@router.get("/available", response_model=list[StatsBombCompetition], operation_id="getAvailableCompetitions")
+@router.get(
+    "/available",
+    response_model=list[StatsBombCompetition],
+    operation_id="getAvailableCompetitions",
+)
 def get_available_competitions() -> list[StatsBombCompetition]:
     """Returns the full StatsBomb open data competition catalog."""
     import math
     import warnings
+
     from statsbombpy import sb  # type: ignore[import-untyped]
 
     with warnings.catch_warnings():
@@ -69,14 +74,20 @@ def get_available_competitions() -> list[StatsBombCompetition]:
     result = []
     for _, row in df.iterrows():
         val = row.get("match_available_360")
-        has_360 = val is not None and not (isinstance(val, float) and math.isnan(val)) and str(val) not in ("", "nan", "None")
-        result.append(StatsBombCompetition(
-            competition_id=int(row["competition_id"]),
-            competition_name=str(row["competition_name"]),
-            country_name=str(row["country_name"]),
-            season_id=int(row["season_id"]),
-            season_name=str(row["season_name"]),
-            has_360=bool(has_360),
-        ))
+        has_360 = (
+            val is not None
+            and not (isinstance(val, float) and math.isnan(val))
+            and str(val) not in ("", "nan", "None")
+        )
+        result.append(
+            StatsBombCompetition(
+                competition_id=int(row["competition_id"]),
+                competition_name=str(row["competition_name"]),
+                country_name=str(row["country_name"]),
+                season_id=int(row["season_id"]),
+                season_name=str(row["season_name"]),
+                has_360=bool(has_360),
+            )
+        )
 
     return sorted(result, key=lambda x: (x.competition_name, x.season_name))

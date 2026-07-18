@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 class Frame360Service:
-    def __init__(self, frame_repo: Frame360Repository, match_repo: MatchRepository) -> None:
+    def __init__(
+        self, frame_repo: Frame360Repository, match_repo: MatchRepository
+    ) -> None:
         self.frame_repo = frame_repo
         self.match_repo = match_repo
 
@@ -20,7 +22,9 @@ class Frame360Service:
     ) -> int:
         from statsbombpy import sb  # type: ignore[import-untyped]
 
-        matches = self.match_repo.list_for_competition(competition_statsbomb_id, season_id)
+        matches = self.match_repo.list_for_competition(
+            competition_statsbomb_id, season_id
+        )
         total_imported = 0
 
         for match in matches:

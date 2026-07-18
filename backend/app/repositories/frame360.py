@@ -20,7 +20,9 @@ class Frame360Repository:
         self, match_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> tuple[list[Frame360], int]:
         count = self.session.exec(
-            select(func.count()).select_from(Frame360).where(Frame360.match_id == match_id)
+            select(func.count())
+            .select_from(Frame360)
+            .where(Frame360.match_id == match_id)
         ).one()
         frames = self.session.exec(
             select(Frame360)

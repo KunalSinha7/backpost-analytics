@@ -11,11 +11,6 @@ from app.api.deps import (
 )
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
-from app.repositories.user import (
-    create_user as create_user_in_db,
-    get_user_by_email,
-    update_user as update_user_in_db,
-)
 from app.models import (
     Message,
     UpdatePassword,
@@ -26,6 +21,15 @@ from app.models import (
     UsersPublic,
     UserUpdate,
     UserUpdateMe,
+)
+from app.repositories.user import (
+    create_user as create_user_in_db,
+)
+from app.repositories.user import (
+    get_user_by_email,
+)
+from app.repositories.user import (
+    update_user as update_user_in_db,
 )
 from app.utils import generate_new_account_email, send_email
 

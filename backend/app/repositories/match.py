@@ -24,7 +24,9 @@ class MatchRepository:
         if has_events:
             from app.models.event import Event
 
-            events_exist = select(Event.id).where(Event.match_id == SoccerMatch.id).exists()
+            events_exist = (
+                select(Event.id).where(Event.match_id == SoccerMatch.id).exists()
+            )
             stmt = stmt.where(events_exist)
             count_stmt = count_stmt.where(events_exist)
         count = self.session.exec(count_stmt).one()

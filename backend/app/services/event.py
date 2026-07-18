@@ -12,7 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 class EventService:
-    def __init__(self, event_repo: EventRepository, match_repo: MatchRepository) -> None:
+    def __init__(
+        self, event_repo: EventRepository, match_repo: MatchRepository
+    ) -> None:
         self.event_repo = event_repo
         self.match_repo = match_repo
 
@@ -27,7 +29,9 @@ class EventService:
         """
         from statsbombpy import sb  # type: ignore[import-untyped]
 
-        matches = self.match_repo.list_for_competition(competition_statsbomb_id, season_id)
+        matches = self.match_repo.list_for_competition(
+            competition_statsbomb_id, season_id
+        )
         existing_ids = self.event_repo.get_existing_statsbomb_ids()
         total_imported = 0
 

@@ -1,6 +1,16 @@
 from fastapi import APIRouter
 
-from app.api.routes import competition, event, frame360, lineup, login, match, private, users, utils
+from app.api.routes import (
+    competition,
+    event,
+    frame360,
+    lineup,
+    login,
+    match,
+    private,
+    users,
+    utils,
+)
 from app.core.config import settings
 
 api_router = APIRouter()

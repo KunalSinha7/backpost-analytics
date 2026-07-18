@@ -1,10 +1,11 @@
 import math
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 
-def _clean_nan(data: dict) -> dict:
-    result = {}
+def _clean_nan(data: dict[str, Any]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
     for k, v in data.items():
         if isinstance(v, float) and math.isnan(v):
             result[k] = None
@@ -87,9 +88,11 @@ class StatsBombEventRow(_StatsBombRow):
     off_camera: bool | None = None
     out: bool | None = None
 
-    @field_validator("type", "team", "player", "possession_team", "play_pattern", mode="before")
+    @field_validator(
+        "type", "team", "player", "possession_team", "play_pattern", mode="before"
+    )
     @classmethod
-    def extract_name(cls, v: object) -> str | None:
+    def extract_name(cls, v: Any) -> str | None:
         if isinstance(v, dict):
             return v.get("name")
         return v  # type: ignore[return-value]
@@ -105,13 +108,16 @@ class StatsBombLineupPlayerRow(_StatsBombRow):
 
     @field_validator("country", mode="before")
     @classmethod
-    def extract_country_name(cls, v: object) -> str | None:
+    def extract_country_name(cls, v: Any) -> str | None:
         if isinstance(v, dict):
             return v.get("name")
         return v  # type: ignore[return-value]
 
     def is_starter(self) -> bool:
-        return bool(self.positions) and self.positions[0].get("start_reason") == "Starting XI"
+        return (
+            bool(self.positions)
+            and self.positions[0].get("start_reason") == "Starting XI"
+        )
 
 
 class StatsBombFrameRow(_StatsBombRow):

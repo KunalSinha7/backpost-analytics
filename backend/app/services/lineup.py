@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 class LineupService:
-    def __init__(self, lineup_repo: LineupRepository, match_repo: MatchRepository) -> None:
+    def __init__(
+        self, lineup_repo: LineupRepository, match_repo: MatchRepository
+    ) -> None:
         self.lineup_repo = lineup_repo
         self.match_repo = match_repo
 
@@ -20,7 +22,9 @@ class LineupService:
     ) -> int:
         from statsbombpy import sb  # type: ignore[import-untyped]
 
-        matches = self.match_repo.list_for_competition(competition_statsbomb_id, season_id)
+        matches = self.match_repo.list_for_competition(
+            competition_statsbomb_id, season_id
+        )
         total_imported = 0
 
         for match in matches:
@@ -30,7 +34,9 @@ class LineupService:
             try:
                 lineups = sb.lineups(match_id=match.statsbomb_id)
             except Exception:
-                logger.warning("Could not fetch lineups for match %s", match.statsbomb_id)
+                logger.warning(
+                    "Could not fetch lineups for match %s", match.statsbomb_id
+                )
                 continue
 
             batch: list[Lineup] = []
@@ -53,7 +59,9 @@ class LineupService:
             session.commit()
             total_imported += len(batch)
             logger.info(
-                "Lineups ingested: match_id=%s, players=%d", match.statsbomb_id, len(batch)
+                "Lineups ingested: match_id=%s, players=%d",
+                match.statsbomb_id,
+                len(batch),
             )
 
         return total_imported
