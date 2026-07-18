@@ -2,7 +2,6 @@ import uuid
 from unittest.mock import patch
 
 import pandas as pd
-import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
@@ -14,8 +13,6 @@ from tests.utils.soccer import (
     create_lineup,
     create_match,
 )
-from tests.utils.utils import get_superuser_token_headers
-
 
 BASE = f"{settings.API_V1_STR}/soccer"
 
@@ -23,7 +20,9 @@ BASE = f"{settings.API_V1_STR}/soccer"
 # ── Competitions ──────────────────────────────────────────────────────────
 
 
-def test_read_competitions_empty(client: TestClient, superuser_token_headers: dict) -> None:
+def test_read_competitions_empty(
+    client: TestClient, superuser_token_headers: dict
+) -> None:
     response = client.get(f"{BASE}/competitions/", headers=superuser_token_headers)
     assert response.status_code == 200
     body = response.json()
@@ -34,7 +33,9 @@ def test_read_competitions_empty(client: TestClient, superuser_token_headers: di
 def test_read_competitions_with_data(
     client: TestClient, superuser_token_headers: dict, db: Session
 ) -> None:
-    create_competition(db, statsbomb_id=8001, season_id=8001, competition_name="Route Test League")
+    create_competition(
+        db, statsbomb_id=8001, season_id=8001, competition_name="Route Test League"
+    )
     response = client.get(f"{BASE}/competitions/", headers=superuser_token_headers)
     assert response.status_code == 200
     names = [c["competition_name"] for c in response.json()["data"]]
@@ -66,7 +67,9 @@ def test_ingest_soccer_data(client: TestClient, superuser_token_headers: dict) -
         patch("statsbombpy.sb.competitions", return_value=comps_df),
         patch("statsbombpy.sb.matches", return_value=matches_df),
     ):
-        response = client.post(f"{BASE}/competitions/ingest", headers=superuser_token_headers)
+        response = client.post(
+            f"{BASE}/competitions/ingest", headers=superuser_token_headers
+        )
 
     assert response.status_code == 200
     body = response.json()
@@ -106,7 +109,9 @@ def test_get_available_competitions(client: TestClient) -> None:
 # ── Matches ───────────────────────────────────────────────────────────────
 
 
-def test_read_matches(client: TestClient, superuser_token_headers: dict, db: Session) -> None:
+def test_read_matches(
+    client: TestClient, superuser_token_headers: dict, db: Session
+) -> None:
     comp = create_competition(db, statsbomb_id=8010, season_id=8010)
     create_match(db, comp.id, statsbomb_id=80010, home_team="Alpha", away_team="Beta")
     response = client.get(f"{BASE}/matches/", headers=superuser_token_headers)
@@ -136,7 +141,9 @@ def test_read_matches_filter_by_competition(
 # ── Events ────────────────────────────────────────────────────────────────
 
 
-def test_read_events(client: TestClient, superuser_token_headers: dict, db: Session) -> None:
+def test_read_events(
+    client: TestClient, superuser_token_headers: dict, db: Session
+) -> None:
     comp = create_competition(db, statsbomb_id=8020, season_id=8020)
     match = create_match(db, comp.id, statsbomb_id=80020)
     create_event(db, match.id, type_name="Pass")
@@ -178,10 +185,14 @@ def test_ingest_events_accepted(
 # ── Lineups ───────────────────────────────────────────────────────────────
 
 
-def test_read_lineups(client: TestClient, superuser_token_headers: dict, db: Session) -> None:
+def test_read_lineups(
+    client: TestClient, superuser_token_headers: dict, db: Session
+) -> None:
     comp = create_competition(db, statsbomb_id=8030, season_id=8030)
     match = create_match(db, comp.id, statsbomb_id=80030)
-    create_lineup(db, match.id, player_name="Messi", jersey_number=10, statsbomb_player_id=5503)
+    create_lineup(
+        db, match.id, player_name="Messi", jersey_number=10, statsbomb_player_id=5503
+    )
     response = client.get(
         f"{BASE}/lineups/",
         params={"match_id": str(match.id)},
@@ -206,7 +217,9 @@ def test_read_lineups_empty(client: TestClient, superuser_token_headers: dict) -
 # ── Frames 360 ────────────────────────────────────────────────────────────
 
 
-def test_read_frames(client: TestClient, superuser_token_headers: dict, db: Session) -> None:
+def test_read_frames(
+    client: TestClient, superuser_token_headers: dict, db: Session
+) -> None:
     comp = create_competition(db, statsbomb_id=8040, season_id=8040)
     match = create_match(db, comp.id, statsbomb_id=80040)
     create_frame(db, match.id, "evt-route-frame-001")

@@ -137,7 +137,9 @@ def _frames_df(event_id: str) -> pd.DataFrame:
 
 
 def test_competition_service_ingest_new(db: Session) -> None:
-    with patch("statsbombpy.sb.competitions", return_value=_competitions_df(6001, 6001)):
+    with patch(
+        "statsbombpy.sb.competitions", return_value=_competitions_df(6001, 6001)
+    ):
         repo = CompetitionRepository(db)
         n, comps = CompetitionService(repo).ingest()
     assert n >= 1

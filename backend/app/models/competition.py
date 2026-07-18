@@ -22,7 +22,7 @@ class CompetitionBase(SQLModel):
 class Competition(CompetitionBase, table=True):
     __table_args__ = (UniqueConstraint("statsbomb_id", "season_id"),)
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    matches: list["SoccerMatch"] = Relationship(  # type: ignore[name-defined]  # noqa: F821
+    matches: list["SoccerMatch"] = Relationship(  # type: ignore  # noqa: F821
         back_populates="competition", cascade_delete=True
     )
 

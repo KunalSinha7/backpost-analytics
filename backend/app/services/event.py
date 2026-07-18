@@ -42,7 +42,7 @@ class EventService:
                 raise StatsBombFetchError(match.statsbomb_id) from exc
 
             batch: list[Event] = []
-            for _, row in events_df.iterrows():
+            for _, row in events_df.iterrows():  # type: ignore
                 event_row = StatsBombEventRow.model_validate(row.to_dict())
                 if event_row.id in existing_ids:
                     continue

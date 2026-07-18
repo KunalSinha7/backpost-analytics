@@ -8,7 +8,9 @@ class CompetitionRepository:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def list_all(self, skip: int = 0, limit: int = 100) -> tuple[list[Competition], int]:
+    def list_all(
+        self, skip: int = 0, limit: int = 100
+    ) -> tuple[list[Competition], int]:
         count = self.session.exec(select(func.count()).select_from(Competition)).one()
         rows = self.session.exec(
             select(Competition)

@@ -42,7 +42,7 @@ class Frame360Service:
                 continue
 
             batch: list[Frame360] = []
-            for _, row in frames_df.iterrows():
+            for _, row in frames_df.iterrows():  # type: ignore
                 frame_row = StatsBombFrameRow.model_validate(row.to_dict())
                 if frame_row.id in existing:
                     continue

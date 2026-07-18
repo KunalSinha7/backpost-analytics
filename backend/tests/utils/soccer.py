@@ -26,7 +26,9 @@ def create_competition(db: Session, **kwargs: object) -> Competition:
     return comp
 
 
-def create_match(db: Session, competition_id: uuid.UUID, **kwargs: object) -> SoccerMatch:
+def create_match(
+    db: Session, competition_id: uuid.UUID, **kwargs: object
+) -> SoccerMatch:
     match = SoccerMatch(
         statsbomb_id=kwargs.get("statsbomb_id", 88888),
         competition_id=competition_id,
