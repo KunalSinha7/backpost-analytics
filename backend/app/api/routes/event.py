@@ -1,13 +1,12 @@
 import logging
 import uuid
-from typing import Annotated, Any
+from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks
 from sqlmodel import Session
 
-from app.api.deps import SessionDep, get_current_active_superuser
+from app.api.deps import SessionDep, SuperuserDep
 from app.exceptions.event import StatsBombFetchError
-from app.models import User
 from app.models.event import EventPublic, EventsPublic
 from app.repositories.event import EventRepository
 from app.repositories.frame360 import Frame360Repository
@@ -19,7 +18,6 @@ from app.services.lineup import LineupService
 
 router = APIRouter(prefix="/events", tags=["soccer"])
 logger = logging.getLogger(__name__)
-SuperuserDep = Annotated[User, Depends(get_current_active_superuser)]
 
 
 @router.get("/", response_model=EventsPublic, operation_id="readEvents")

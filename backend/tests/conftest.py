@@ -1,4 +1,6 @@
+import uuid
 from collections.abc import Generator
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,8 +15,11 @@ from app.models.event import Event
 from app.models.frame360 import Frame360
 from app.models.lineup import Lineup
 from app.models.match import SoccerMatch
+from app.repositories.user import create_user as _original_create_user
 from tests.utils.user import authentication_token_from_email
 from tests.utils.utils import get_superuser_token_headers
+
+_test_user_ids: set[uuid.UUID] = set()
 
 
 def _wipe_soccer_data(session: Session) -> None:
@@ -27,14 +32,26 @@ def _wipe_soccer_data(session: Session) -> None:
     session.commit()
 
 
+def _tracking_create_user(**kwargs: object) -> User:
+    user = _original_create_user(**kwargs)  # type: ignore[arg-type]
+    _test_user_ids.add(user.id)
+    return user
+
+
 @pytest.fixture(scope="session", autouse=True)
 def db() -> Generator[Session, None, None]:
     with Session(engine) as session:
-        init_db(session)
+        init_db(session)  # creates superuser before tracking starts
         _wipe_soccer_data(session)
-        yield session
+        with (
+            patch("app.repositories.user.create_user", _tracking_create_user),
+            patch("app.services.user.create_user", _tracking_create_user),
+            patch("app.api.routes.private.create_user_in_db", _tracking_create_user),
+        ):
+            yield session
         _wipe_soccer_data(session)
-        session.execute(delete(User))
+        if _test_user_ids:
+            session.execute(delete(User).where(User.id.in_(_test_user_ids)))
         session.commit()
 
 

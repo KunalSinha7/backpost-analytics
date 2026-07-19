@@ -28,5 +28,4 @@ class EventRepository:
         return set(self.session.exec(select(Event.statsbomb_id)).all())
 
     def add_batch(self, events: list[Event]) -> None:
-        for event in events:
-            self.session.add(event)
+        self.session.add_all(events)
