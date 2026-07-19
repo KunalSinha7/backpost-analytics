@@ -105,7 +105,6 @@ export class LoginService {
 export class PrivateService {
     /**
      * Create User
-     * Create a new user.
      * @param data The data for the request.
      * @param data.requestBody
      * @returns UserPublic Successful Response
