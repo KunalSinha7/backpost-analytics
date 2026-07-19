@@ -12,7 +12,14 @@ from app.exceptions.user import (
     SuperuserCannotDeleteSelfError,
     UserNotFoundError,
 )
-from app.models import UpdatePassword, User, UserCreate, UserRegister, UserUpdate, UserUpdateMe
+from app.models import (
+    UpdatePassword,
+    User,
+    UserCreate,
+    UserRegister,
+    UserUpdate,
+    UserUpdateMe,
+)
 from app.repositories.user import create_user, get_user_by_email, update_user
 from app.utils import generate_new_account_email, send_email
 
@@ -48,11 +55,13 @@ class UserService:
     def register_user(self, user_in: UserRegister) -> User:
         if get_user_by_email(session=self.session, email=user_in.email):
             raise EmailAlreadyExistsError(user_in.email)
-        return create_user(session=self.session, user_create=UserCreate.model_validate(user_in))
+        return create_user(
+            session=self.session, user_create=UserCreate.model_validate(user_in)
+        )
 
     def get_user_by_id(self, user_id: uuid.UUID, current_user: User) -> User:
         user = self.session.get(User, user_id)
-        if user == current_user:
+        if user is not None and user == current_user:
             return user
         if not current_user.is_superuser:
             raise InsufficientPrivilegesError()
@@ -72,7 +81,9 @@ class UserService:
         return current_user
 
     def update_password_me(self, current_user: User, body: UpdatePassword) -> None:
-        verified, _ = verify_password(body.current_password, current_user.hashed_password)
+        verified, _ = verify_password(
+            body.current_password, current_user.hashed_password
+        )
         if not verified:
             raise IncorrectPasswordError()
         if body.current_password == body.new_password:
@@ -101,7 +112,7 @@ class UserService:
         user = self.session.get(User, user_id)
         if not user:
             raise UserNotFoundError(user_id)
-        if user == current_user:
+        if user is not None and user == current_user:
             raise SuperuserCannotDeleteSelfError()
         self.session.delete(user)
         self.session.commit()

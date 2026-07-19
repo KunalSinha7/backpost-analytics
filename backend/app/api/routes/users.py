@@ -59,7 +59,9 @@ def update_user_me(
     try:
         return UserService(session).update_user_me(current_user, user_in)
     except EmailAlreadyExistsError:
-        raise HTTPException(status_code=409, detail="User with this email already exists")
+        raise HTTPException(
+            status_code=409, detail="User with this email already exists"
+        )
 
 
 @router.patch("/me/password", response_model=Message)
@@ -123,9 +125,7 @@ def read_user_by_id(
     dependencies=[Depends(get_current_active_superuser)],
     response_model=UserPublic,
 )
-def update_user(
-    *, session: SessionDep, user_id: uuid.UUID, user_in: UserUpdate
-) -> Any:
+def update_user(*, session: SessionDep, user_id: uuid.UUID, user_in: UserUpdate) -> Any:
     try:
         return UserService(session).update_user(user_id, user_in)
     except UserNotFoundError:
@@ -134,7 +134,9 @@ def update_user(
             detail="The user with this id does not exist in the system",
         )
     except EmailAlreadyExistsError:
-        raise HTTPException(status_code=409, detail="User with this email already exists")
+        raise HTTPException(
+            status_code=409, detail="User with this email already exists"
+        )
 
 
 @router.delete("/{user_id}", dependencies=[Depends(get_current_active_superuser)])
