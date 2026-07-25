@@ -33,5 +33,4 @@ class Frame360Repository:
         return list(frames), count
 
     def add_batch(self, frames: list[Frame360]) -> None:
-        for frame in frames:
-            self.session.add(frame)
+        self.session.add_all(frames)

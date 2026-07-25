@@ -1,5 +1,7 @@
 import logging
 
+from sqlmodel import Session
+
 from app.models.competition import Competition
 from app.repositories.competition import CompetitionRepository
 from app.utils.statsbomb import StatsBombCompetitionRow
@@ -8,8 +10,13 @@ logger = logging.getLogger(__name__)
 
 
 class CompetitionService:
-    def __init__(self, repo: CompetitionRepository) -> None:
-        self.repo = repo
+    def __init__(self, session: Session) -> None:
+        self.repo = CompetitionRepository(session)
+
+    def list_competitions(
+        self, skip: int = 0, limit: int = 100
+    ) -> tuple[list[Competition], int]:
+        return self.repo.list_all(skip=skip, limit=limit)
 
     def ingest(self) -> tuple[int, list[Competition]]:
         from statsbombpy import sb  # type: ignore[import-untyped]

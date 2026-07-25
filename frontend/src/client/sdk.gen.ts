@@ -8,7 +8,6 @@ import type { LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTes
 export class LoginService {
     /**
      * Login Access Token
-     * OAuth2 compatible token login, get an access token for future requests
      * @param data The data for the request.
      * @param data.formData
      * @returns Token Successful Response
@@ -28,7 +27,6 @@ export class LoginService {
     
     /**
      * Test Token
-     * Test access token
      * @returns UserPublic Successful Response
      * @throws ApiError
      */
@@ -41,7 +39,6 @@ export class LoginService {
     
     /**
      * Recover Password
-     * Password Recovery
      * @param data The data for the request.
      * @param data.email
      * @returns Message Successful Response
@@ -62,7 +59,6 @@ export class LoginService {
     
     /**
      * Reset Password
-     * Reset password
      * @param data The data for the request.
      * @param data.requestBody
      * @returns Message Successful Response
@@ -82,7 +78,6 @@ export class LoginService {
     
     /**
      * Recover Password Html Content
-     * HTML Content for Password Recovery
      * @param data The data for the request.
      * @param data.email
      * @returns string Successful Response
@@ -105,7 +100,6 @@ export class LoginService {
 export class PrivateService {
     /**
      * Create User
-     * Create a new user.
      * @param data The data for the request.
      * @param data.requestBody
      * @returns UserPublic Successful Response
@@ -292,7 +286,6 @@ export class SoccerService {
 export class UsersService {
     /**
      * Read Users
-     * Retrieve users.
      * @param data The data for the request.
      * @param data.skip
      * @param data.limit
@@ -315,7 +308,6 @@ export class UsersService {
     
     /**
      * Create User
-     * Create new user.
      * @param data The data for the request.
      * @param data.requestBody
      * @returns UserPublic Successful Response
@@ -335,7 +327,6 @@ export class UsersService {
     
     /**
      * Read User Me
-     * Get current user.
      * @returns UserPublic Successful Response
      * @throws ApiError
      */
@@ -348,7 +339,6 @@ export class UsersService {
     
     /**
      * Delete User Me
-     * Delete own user.
      * @returns Message Successful Response
      * @throws ApiError
      */
@@ -361,7 +351,6 @@ export class UsersService {
     
     /**
      * Update User Me
-     * Update own user.
      * @param data The data for the request.
      * @param data.requestBody
      * @returns UserPublic Successful Response
@@ -381,7 +370,6 @@ export class UsersService {
     
     /**
      * Update Password Me
-     * Update own password.
      * @param data The data for the request.
      * @param data.requestBody
      * @returns Message Successful Response
@@ -401,7 +389,6 @@ export class UsersService {
     
     /**
      * Register User
-     * Create new user without the need to be logged in.
      * @param data The data for the request.
      * @param data.requestBody
      * @returns UserPublic Successful Response
@@ -421,7 +408,6 @@ export class UsersService {
     
     /**
      * Read User By Id
-     * Get a specific user by id.
      * @param data The data for the request.
      * @param data.userId
      * @returns UserPublic Successful Response
@@ -442,7 +428,6 @@ export class UsersService {
     
     /**
      * Update User
-     * Update a user.
      * @param data The data for the request.
      * @param data.userId
      * @param data.requestBody
@@ -466,7 +451,6 @@ export class UsersService {
     
     /**
      * Delete User
-     * Delete a user.
      * @param data The data for the request.
      * @param data.userId
      * @returns Message Successful Response

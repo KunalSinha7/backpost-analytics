@@ -11,7 +11,7 @@ updates:
       prefix: ⬆
     labels:
       - "internal"
-      - "dependencies"
+      - "upgrade"
       - "github_actions"
     groups:
       github-actions:
@@ -26,7 +26,7 @@ updates:
       default-days: 7
     commit-message:
       prefix: ⬆
-    labels: [dependencies, internal]
+    labels: [upgrade, internal]
     groups:
       python-packages:
         patterns:
@@ -40,7 +40,7 @@ updates:
       default-days: 7
     commit-message:
       prefix: ⬆
-    labels: [dependencies, internal]
+    labels: [upgrade, internal]
     ignore:
       - dependency-name: "@hey-api/openapi-ts"
     groups:
@@ -86,7 +86,7 @@ updates:
       prefix: ⬆
     labels:
       - "internal"
-      - "dependencies"
+      - "upgrade"
       - "pre-commit"
     groups:
       pre-commit:

@@ -1,4 +1,5 @@
 import logging
+import uuid
 
 from sqlmodel import Session
 
@@ -11,14 +12,18 @@ logger = logging.getLogger(__name__)
 
 
 class Frame360Service:
-    def __init__(
-        self, frame_repo: Frame360Repository, match_repo: MatchRepository
-    ) -> None:
-        self.frame_repo = frame_repo
-        self.match_repo = match_repo
+    def __init__(self, session: Session) -> None:
+        self.session = session
+        self.frame_repo = Frame360Repository(session)
+        self.match_repo = MatchRepository(session)
+
+    def list_by_match(
+        self, match_id: uuid.UUID, skip: int = 0, limit: int = 100
+    ) -> tuple[list[Frame360], int]:
+        return self.frame_repo.list_by_match(match_id, skip=skip, limit=limit)
 
     def ingest_for_competition(
-        self, competition_statsbomb_id: int, season_id: int, session: Session
+        self, competition_statsbomb_id: int, season_id: int
     ) -> int:
         from statsbombpy import sb  # type: ignore[import-untyped]
 
@@ -57,7 +62,7 @@ class Frame360Service:
 
             if batch:
                 self.frame_repo.add_batch(batch)
-                session.commit()
+                self.session.commit()
                 total_imported += len(batch)
                 logger.info(
                     "360 frames ingested: match_id=%s, frames=%d",

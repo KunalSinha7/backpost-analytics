@@ -1,4 +1,5 @@
 import logging
+import uuid
 
 from sqlmodel import Session
 
@@ -12,14 +13,18 @@ logger = logging.getLogger(__name__)
 
 
 class EventService:
-    def __init__(
-        self, event_repo: EventRepository, match_repo: MatchRepository
-    ) -> None:
-        self.event_repo = event_repo
-        self.match_repo = match_repo
+    def __init__(self, session: Session) -> None:
+        self.session = session
+        self.event_repo = EventRepository(session)
+        self.match_repo = MatchRepository(session)
+
+    def list_by_match(
+        self, match_id: uuid.UUID, skip: int = 0, limit: int = 10000
+    ) -> tuple[list[Event], int]:
+        return self.event_repo.list_by_match(match_id, skip=skip, limit=limit)
 
     def ingest_for_competition(
-        self, competition_statsbomb_id: int, season_id: int, session: Session
+        self, competition_statsbomb_id: int, season_id: int
     ) -> int:
         """
         Fetches and stores all events for every match in the given competition/season.
@@ -73,7 +78,7 @@ class EventService:
                 existing_ids.add(event_row.id)
 
             self.event_repo.add_batch(batch)
-            session.commit()
+            self.session.commit()
             total_imported += len(batch)
             logger.info(
                 "Events ingested: match_id=%s, new=%d", match.statsbomb_id, len(batch)

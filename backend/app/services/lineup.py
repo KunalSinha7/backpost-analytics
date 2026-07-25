@@ -1,4 +1,5 @@
 import logging
+import uuid
 
 from sqlmodel import Session
 
@@ -11,14 +12,16 @@ logger = logging.getLogger(__name__)
 
 
 class LineupService:
-    def __init__(
-        self, lineup_repo: LineupRepository, match_repo: MatchRepository
-    ) -> None:
-        self.lineup_repo = lineup_repo
-        self.match_repo = match_repo
+    def __init__(self, session: Session) -> None:
+        self.session = session
+        self.lineup_repo = LineupRepository(session)
+        self.match_repo = MatchRepository(session)
+
+    def list_by_match(self, match_id: uuid.UUID) -> tuple[list[Lineup], int]:
+        return self.lineup_repo.list_by_match(match_id)
 
     def ingest_for_competition(
-        self, competition_statsbomb_id: int, season_id: int, session: Session
+        self, competition_statsbomb_id: int, season_id: int
     ) -> int:
         from statsbombpy import sb  # type: ignore[import-untyped]
 
@@ -56,7 +59,7 @@ class LineupService:
                     batch.append(lineup)
 
             self.lineup_repo.add_batch(batch)
-            session.commit()
+            self.session.commit()
             total_imported += len(batch)
             logger.info(
                 "Lineups ingested: match_id=%s, players=%d",

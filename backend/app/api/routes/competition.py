@@ -1,21 +1,17 @@
 import logging
-from typing import Annotated, Any
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from sqlmodel import SQLModel
 
-from app.api.deps import SessionDep, get_current_active_superuser
+from app.api.deps import SessionDep, SuperuserDep
 from app.exceptions.competition import CompetitionNotFoundError
-from app.models import User
 from app.models.competition import CompetitionPublic, CompetitionsPublic
-from app.repositories.competition import CompetitionRepository
-from app.repositories.match import MatchRepository
 from app.services.competition import CompetitionService
 from app.services.match import MatchService
 
 router = APIRouter(prefix="/competitions", tags=["soccer"])
 logger = logging.getLogger(__name__)
-SuperuserDep = Annotated[User, Depends(get_current_active_superuser)]
 
 
 class IngestResult(SQLModel):
@@ -25,8 +21,7 @@ class IngestResult(SQLModel):
 
 @router.get("/", response_model=CompetitionsPublic, operation_id="readCompetitions")
 def read_competitions(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
-    repo = CompetitionRepository(session)
-    rows, count = repo.list_all(skip=skip, limit=limit)
+    rows, count = CompetitionService(session).list_competitions(skip=skip, limit=limit)
     return CompetitionsPublic(
         data=[CompetitionPublic.model_validate(r) for r in rows],
         count=count,
@@ -35,11 +30,9 @@ def read_competitions(session: SessionDep, skip: int = 0, limit: int = 100) -> A
 
 @router.post("/ingest", response_model=IngestResult, operation_id="ingestSoccerData")
 def ingest_soccer_data(session: SessionDep, _current_user: SuperuserDep) -> Any:
-    comp_repo = CompetitionRepository(session)
-    match_repo = MatchRepository(session)
     try:
-        n_comps, competitions = CompetitionService(comp_repo).ingest()
-        n_matches = MatchService(match_repo).ingest(competitions)
+        n_comps, competitions = CompetitionService(session).ingest()
+        n_matches = MatchService(session).ingest(competitions)
         session.commit()
     except CompetitionNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e

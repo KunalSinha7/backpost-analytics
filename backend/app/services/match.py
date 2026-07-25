@@ -1,4 +1,7 @@
 import logging
+import uuid
+
+from sqlmodel import Session
 
 from app.models.competition import Competition
 from app.models.match import SoccerMatch
@@ -9,8 +12,19 @@ logger = logging.getLogger(__name__)
 
 
 class MatchService:
-    def __init__(self, repo: MatchRepository) -> None:
-        self.repo = repo
+    def __init__(self, session: Session) -> None:
+        self.repo = MatchRepository(session)
+
+    def list_matches(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        competition_id: uuid.UUID | None = None,
+        has_events: bool = False,
+    ) -> tuple[list[SoccerMatch], int]:
+        return self.repo.list_all(
+            skip=skip, limit=limit, competition_id=competition_id, has_events=has_events
+        )
 
     def ingest(self, competitions: list[Competition]) -> int:
         from statsbombpy import sb  # type: ignore[import-untyped]
