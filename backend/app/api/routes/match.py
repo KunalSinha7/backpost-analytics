@@ -6,7 +6,6 @@ from fastapi import APIRouter
 
 from app.api.deps import SessionDep
 from app.models.match import SoccerMatchesPublic, SoccerMatchPublic
-from app.repositories.match import MatchRepository
 from app.services.match import MatchService
 
 router = APIRouter(prefix="/matches", tags=["soccer"])
@@ -21,7 +20,7 @@ def read_matches(
     competition_id: uuid.UUID | None = None,
     has_events: bool = False,
 ) -> Any:
-    rows, count = MatchService(MatchRepository(session)).list_matches(
+    rows, count = MatchService(session).list_matches(
         skip=skip, limit=limit, competition_id=competition_id, has_events=has_events
     )
     return SoccerMatchesPublic(

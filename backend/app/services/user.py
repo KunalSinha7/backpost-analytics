@@ -6,8 +6,10 @@ from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
 from app.exceptions.user import (
     EmailAlreadyExistsError,
+    InactiveUserError,
     IncorrectPasswordError,
     InsufficientPrivilegesError,
+    InvalidTokenError,
     PasswordUnchangedError,
     SuperuserCannotDeleteSelfError,
     UserNotFoundError,
@@ -20,8 +22,19 @@ from app.models import (
     UserUpdate,
     UserUpdateMe,
 )
-from app.repositories.user import create_user, get_user_by_email, update_user
-from app.utils import generate_new_account_email, send_email
+from app.repositories.user import (
+    authenticate,
+    create_user,
+    get_user_by_email,
+    update_user,
+)
+from app.utils import (
+    generate_new_account_email,
+    generate_password_reset_token,
+    generate_reset_password_email,
+    send_email,
+    verify_password_reset_token,
+)
 
 
 class UserService:
@@ -116,3 +129,42 @@ class UserService:
             raise SuperuserCannotDeleteSelfError()
         self.session.delete(user)
         self.session.commit()
+
+    def authenticate_user(self, email: str, password: str) -> User:
+        user = authenticate(session=self.session, email=email, password=password)
+        if not user:
+            raise InvalidTokenError()
+        if not user.is_active:
+            raise InactiveUserError()
+        return user
+
+    def get_user_by_email(self, email: str) -> User | None:
+        return get_user_by_email(session=self.session, email=email)
+
+    def recover_password(self, email: str) -> None:
+        user = get_user_by_email(session=self.session, email=email)
+        if user:
+            token = generate_password_reset_token(email=email)
+            email_data = generate_reset_password_email(
+                email_to=user.email, email=email, token=token
+            )
+            send_email(
+                email_to=user.email,
+                subject=email_data.subject,
+                html_content=email_data.html_content,
+            )
+
+    def reset_password(self, token: str, new_password: str) -> None:
+        email = verify_password_reset_token(token=token)
+        if not email:
+            raise InvalidTokenError()
+        user = get_user_by_email(session=self.session, email=email)
+        if not user:
+            raise InvalidTokenError()
+        if not user.is_active:
+            raise InactiveUserError()
+        update_user(
+            session=self.session,
+            db_user=user,
+            user_in=UserUpdate(password=new_password),
+        )

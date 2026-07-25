@@ -46,7 +46,6 @@ def db() -> Generator[Session, None, None]:
         with (
             patch("app.repositories.user.create_user", _tracking_create_user),
             patch("app.services.user.create_user", _tracking_create_user),
-            patch("app.api.routes.private.create_user_in_db", _tracking_create_user),
         ):
             yield session
         _wipe_soccer_data(session)

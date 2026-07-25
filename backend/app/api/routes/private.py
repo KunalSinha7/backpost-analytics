@@ -1,11 +1,12 @@
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.api.deps import SessionDep
+from app.exceptions.user import EmailAlreadyExistsError
 from app.models import UserCreate, UserPublic
-from app.repositories.user import create_user as create_user_in_db
+from app.services.user import UserService
 
 router = APIRouter(tags=["private"], prefix="/private")
 
@@ -24,4 +25,7 @@ def create_user(user_in: PrivateUserCreate, session: SessionDep) -> Any:
         full_name=user_in.full_name,
         password=user_in.password,
     )
-    return create_user_in_db(session=session, user_create=user_create)
+    try:
+        return UserService(session).create_user(user_in=user_create)
+    except EmailAlreadyExistsError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e

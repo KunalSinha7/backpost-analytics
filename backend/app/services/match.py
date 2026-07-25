@@ -1,6 +1,8 @@
 import logging
 import uuid
 
+from sqlmodel import Session
+
 from app.models.competition import Competition
 from app.models.match import SoccerMatch
 from app.repositories.match import MatchRepository
@@ -10,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 class MatchService:
-    def __init__(self, repo: MatchRepository) -> None:
-        self.repo = repo
+    def __init__(self, session: Session) -> None:
+        self.repo = MatchRepository(session)
 
     def list_matches(
         self,
