@@ -1,16 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Suspense } from "react"
-import { z } from "zod"
-
 import { MatchTable } from "@/components/Matches/MatchTable"
 import PendingTable from "@/components/Pending/PendingTable"
 
-const matchesSearchSchema = z.object({
-  competitionId: z.string().optional(),
-})
-
 export const Route = createFileRoute("/_layout/soccer/matches")({
-  validateSearch: matchesSearchSchema,
+  validateSearch: (search: Record<string, unknown>) => ({
+    competitionId:
+      typeof search.competitionId === "string"
+        ? search.competitionId
+        : undefined,
+  }),
   component: MatchesPage,
   head: () => ({ meta: [{ title: "Matches - StatsBomb Analytics" }] }),
 })

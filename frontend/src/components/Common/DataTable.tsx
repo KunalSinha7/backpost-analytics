@@ -35,11 +35,20 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+interface ServerPaginationProps {
+  totalCount: number
+  page: number
+  pageSize: number
+  onPageChange: (page: number) => void
+  onPageSizeChange: (size: number) => void
+}
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   pageSize?: number
   enableSorting?: boolean
+  serverPagination?: ServerPaginationProps
 }
 
 export function DataTable<TData, TValue>({
@@ -47,6 +56,7 @@ export function DataTable<TData, TValue>({
   data,
   pageSize,
   enableSorting = true,
+  serverPagination,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([])
 
@@ -58,9 +68,102 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
     enableSorting,
-    state: { sorting },
-    initialState: { pagination: { pageSize: pageSize ?? 10 } },
+    ...(serverPagination
+      ? {
+          manualPagination: true,
+          pageCount: Math.ceil(
+            serverPagination.totalCount / serverPagination.pageSize,
+          ),
+          state: {
+            sorting,
+            pagination: {
+              pageIndex: serverPagination.page,
+              pageSize: serverPagination.pageSize,
+            },
+          },
+        }
+      : {
+          state: { sorting },
+          initialState: { pagination: { pageSize: pageSize ?? 10 } },
+        }),
   })
+
+  const serverPageCount = serverPagination
+    ? Math.ceil(serverPagination.totalCount / serverPagination.pageSize)
+    : 0
+  const showPagination = serverPagination
+    ? serverPagination.totalCount > serverPagination.pageSize
+    : table.getPageCount() > 1
+
+  const startEntry = serverPagination
+    ? serverPagination.page * serverPagination.pageSize + 1
+    : table.getState().pagination.pageIndex *
+        table.getState().pagination.pageSize +
+      1
+  const endEntry = serverPagination
+    ? Math.min(
+        (serverPagination.page + 1) * serverPagination.pageSize,
+        serverPagination.totalCount,
+      )
+    : Math.min(
+        (table.getState().pagination.pageIndex + 1) *
+          table.getState().pagination.pageSize,
+        data.length,
+      )
+  const totalEntries = serverPagination
+    ? serverPagination.totalCount
+    : data.length
+  const currentPage = serverPagination
+    ? serverPagination.page + 1
+    : table.getState().pagination.pageIndex + 1
+  const totalPages = serverPagination ? serverPageCount : table.getPageCount()
+  const currentPageSize = serverPagination
+    ? serverPagination.pageSize
+    : table.getState().pagination.pageSize
+
+  const canPreviousPage = serverPagination
+    ? serverPagination.page > 0
+    : table.getCanPreviousPage()
+  const canNextPage = serverPagination
+    ? serverPagination.page < serverPageCount - 1
+    : table.getCanNextPage()
+
+  const goToFirstPage = () => {
+    if (serverPagination) {
+      serverPagination.onPageChange(0)
+    } else {
+      table.setPageIndex(0)
+    }
+  }
+  const goToPreviousPage = () => {
+    if (serverPagination) {
+      serverPagination.onPageChange(serverPagination.page - 1)
+    } else {
+      table.previousPage()
+    }
+  }
+  const goToNextPage = () => {
+    if (serverPagination) {
+      serverPagination.onPageChange(serverPagination.page + 1)
+    } else {
+      table.nextPage()
+    }
+  }
+  const goToLastPage = () => {
+    if (serverPagination) {
+      serverPagination.onPageChange(serverPageCount - 1)
+    } else {
+      table.setPageIndex(table.getPageCount() - 1)
+    }
+  }
+  const handlePageSizeChange = (value: string) => {
+    if (serverPagination) {
+      serverPagination.onPageSizeChange(Number(value))
+      serverPagination.onPageChange(0)
+    } else {
+      table.setPageSize(Number(value))
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -125,41 +228,29 @@ export function DataTable<TData, TValue>({
         </TableBody>
       </Table>
 
-      {table.getPageCount() > 1 && (
+      {showPagination && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border-t bg-muted/20">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="text-sm text-muted-foreground">
-              Showing{" "}
-              {table.getState().pagination.pageIndex *
-                table.getState().pagination.pageSize +
-                1}{" "}
-              to{" "}
-              {Math.min(
-                (table.getState().pagination.pageIndex + 1) *
-                  table.getState().pagination.pageSize,
-                data.length,
-              )}{" "}
-              of{" "}
-              <span className="font-medium text-foreground">{data.length}</span>{" "}
+              Showing {startEntry} to {endEntry} of{" "}
+              <span className="font-medium text-foreground">
+                {totalEntries}
+              </span>{" "}
               entries
             </div>
             <div className="flex items-center gap-x-2">
               <p className="text-sm text-muted-foreground">Rows per page</p>
               <Select
-                value={`${table.getState().pagination.pageSize}`}
-                onValueChange={(value) => {
-                  table.setPageSize(Number(value))
-                }}
+                value={`${currentPageSize}`}
+                onValueChange={handlePageSizeChange}
               >
                 <SelectTrigger className="h-8 w-[70px]">
-                  <SelectValue
-                    placeholder={table.getState().pagination.pageSize}
-                  />
+                  <SelectValue placeholder={currentPageSize} />
                 </SelectTrigger>
                 <SelectContent side="top">
-                  {[5, 10, 25, 50].map((pageSize) => (
-                    <SelectItem key={pageSize} value={`${pageSize}`}>
-                      {pageSize}
+                  {[5, 10, 25, 50].map((size) => (
+                    <SelectItem key={size} value={`${size}`}>
+                      {size}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -170,13 +261,9 @@ export function DataTable<TData, TValue>({
           <div className="flex items-center gap-x-6">
             <div className="flex items-center gap-x-1 text-sm text-muted-foreground">
               <span>Page</span>
-              <span className="font-medium text-foreground">
-                {table.getState().pagination.pageIndex + 1}
-              </span>
+              <span className="font-medium text-foreground">{currentPage}</span>
               <span>of</span>
-              <span className="font-medium text-foreground">
-                {table.getPageCount()}
-              </span>
+              <span className="font-medium text-foreground">{totalPages}</span>
             </div>
 
             <div className="flex items-center gap-x-1">
@@ -184,8 +271,8 @@ export function DataTable<TData, TValue>({
                 variant="outline"
                 size="sm"
                 className="h-8 w-8 p-0"
-                onClick={() => table.setPageIndex(0)}
-                disabled={!table.getCanPreviousPage()}
+                onClick={goToFirstPage}
+                disabled={!canPreviousPage}
               >
                 <span className="sr-only">Go to first page</span>
                 <ChevronsLeft className="h-4 w-4" />
@@ -194,8 +281,8 @@ export function DataTable<TData, TValue>({
                 variant="outline"
                 size="sm"
                 className="h-8 w-8 p-0"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
+                onClick={goToPreviousPage}
+                disabled={!canPreviousPage}
               >
                 <span className="sr-only">Go to previous page</span>
                 <ChevronLeft className="h-4 w-4" />
@@ -204,8 +291,8 @@ export function DataTable<TData, TValue>({
                 variant="outline"
                 size="sm"
                 className="h-8 w-8 p-0"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
+                onClick={goToNextPage}
+                disabled={!canNextPage}
               >
                 <span className="sr-only">Go to next page</span>
                 <ChevronRight className="h-4 w-4" />
@@ -214,8 +301,8 @@ export function DataTable<TData, TValue>({
                 variant="outline"
                 size="sm"
                 className="h-8 w-8 p-0"
-                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                disabled={!table.getCanNextPage()}
+                onClick={goToLastPage}
+                disabled={!canNextPage}
               >
                 <span className="sr-only">Go to last page</span>
                 <ChevronsRight className="h-4 w-4" />

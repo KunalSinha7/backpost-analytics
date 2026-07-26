@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query"
 import type { ColumnDef } from "@tanstack/react-table"
 import { useState } from "react"
+import { useTablePageSize } from "@/hooks/useTablePageSize"
 import type { EventPublic } from "@/client"
 import { SoccerService } from "@/client"
 import { DataTable } from "@/components/Common/DataTable"
@@ -112,30 +113,54 @@ interface EventTableProps {
 }
 
 export function EventTable({ matchId }: EventTableProps) {
-  const { data } = useSuspenseQuery({
-    queryKey: ["events", matchId],
-    queryFn: () => SoccerService.readEvents({ matchId, skip: 0, limit: 10000 }),
-  })
-
   const [typeFilter, setTypeFilter] = useState("all")
   const [teamFilter, setTeamFilter] = useState("all")
   const [periodFilter, setPeriodFilter] = useState("all")
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useTablePageSize()
 
-  const types = [...new Set(data.data.map((e) => e.type_name))].sort()
-  const teams = [...new Set(data.data.map((e) => e.team))].sort()
-  const periods = [...new Set(data.data.map((e) => String(e.period)))].sort()
+  const { data } = useSuspenseQuery({
+    queryKey: [
+      "events",
+      matchId,
+      typeFilter,
+      teamFilter,
+      periodFilter,
+      page,
+      pageSize,
+    ],
+    queryFn: () =>
+      SoccerService.readEvents({
+        matchId,
+        skip: page * pageSize,
+        limit: pageSize,
+        typeName: typeFilter === "all" ? undefined : typeFilter,
+        team: teamFilter === "all" ? undefined : teamFilter,
+        period: periodFilter === "all" ? undefined : Number(periodFilter),
+      }),
+  })
 
-  const filtered = data.data.filter(
-    (e) =>
-      (typeFilter === "all" || e.type_name === typeFilter) &&
-      (teamFilter === "all" || e.team === teamFilter) &&
-      (periodFilter === "all" || String(e.period) === periodFilter),
-  )
+  const { data: allEvents } = useSuspenseQuery({
+    queryKey: ["events", matchId, "all"],
+    queryFn: () => SoccerService.readEvents({ matchId, skip: 0, limit: 10000 }),
+  })
+
+  const types = [...new Set(allEvents.data.map((e) => e.type_name))].sort()
+  const teams = [...new Set(allEvents.data.map((e) => e.team))].sort()
+  const periods = [
+    ...new Set(allEvents.data.map((e) => String(e.period))),
+  ].sort()
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-3 items-center">
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
+        <Select
+          value={typeFilter}
+          onValueChange={(v) => {
+            setTypeFilter(v)
+            setPage(0)
+          }}
+        >
           <SelectTrigger className="w-44 h-8 text-sm">
             <SelectValue placeholder="Event type" />
           </SelectTrigger>
@@ -149,7 +174,13 @@ export function EventTable({ matchId }: EventTableProps) {
           </SelectContent>
         </Select>
 
-        <Select value={teamFilter} onValueChange={setTeamFilter}>
+        <Select
+          value={teamFilter}
+          onValueChange={(v) => {
+            setTeamFilter(v)
+            setPage(0)
+          }}
+        >
           <SelectTrigger className="w-40 h-8 text-sm">
             <SelectValue placeholder="Team" />
           </SelectTrigger>
@@ -163,7 +194,13 @@ export function EventTable({ matchId }: EventTableProps) {
           </SelectContent>
         </Select>
 
-        <Select value={periodFilter} onValueChange={setPeriodFilter}>
+        <Select
+          value={periodFilter}
+          onValueChange={(v) => {
+            setPeriodFilter(v)
+            setPage(0)
+          }}
+        >
           <SelectTrigger className="w-32 h-8 text-sm">
             <SelectValue placeholder="Period" />
           </SelectTrigger>
@@ -186,6 +223,7 @@ export function EventTable({ matchId }: EventTableProps) {
               setTypeFilter("all")
               setTeamFilter("all")
               setPeriodFilter("all")
+              setPage(0)
             }}
             className="text-xs text-muted-foreground hover:text-foreground underline"
           >
@@ -194,11 +232,20 @@ export function EventTable({ matchId }: EventTableProps) {
         )}
       </div>
 
-      <p className="text-sm text-muted-foreground">
-        {filtered.length.toLocaleString()} of {data.count.toLocaleString()}{" "}
-        events
-      </p>
-      <DataTable columns={columns} data={filtered} pageSize={50} />
+      <DataTable
+        columns={columns}
+        data={data.data}
+        serverPagination={{
+          totalCount: data.count,
+          page,
+          pageSize,
+          onPageChange: setPage,
+          onPageSizeChange: (s) => {
+            setPageSize(s)
+            setPage(0)
+          },
+        }}
+      />
     </div>
   )
 }

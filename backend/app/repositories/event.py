@@ -10,17 +10,30 @@ class EventRepository:
         self.session = session
 
     def list_by_match(
-        self, match_id: uuid.UUID, skip: int = 0, limit: int = 100
+        self,
+        match_id: uuid.UUID,
+        skip: int = 0,
+        limit: int = 100,
+        type_name: str | None = None,
+        team: str | None = None,
+        period: int | None = None,
     ) -> tuple[list[Event], int]:
-        count = self.session.exec(
+        count_stmt = (
             select(func.count()).select_from(Event).where(Event.match_id == match_id)
-        ).one()
+        )
+        stmt = select(Event).where(Event.match_id == match_id)
+        if type_name is not None:
+            count_stmt = count_stmt.where(Event.type_name == type_name)
+            stmt = stmt.where(Event.type_name == type_name)
+        if team is not None:
+            count_stmt = count_stmt.where(Event.team == team)
+            stmt = stmt.where(Event.team == team)
+        if period is not None:
+            count_stmt = count_stmt.where(Event.period == period)
+            stmt = stmt.where(Event.period == period)
+        count = self.session.exec(count_stmt).one()
         events = self.session.exec(
-            select(Event)
-            .where(Event.match_id == match_id)
-            .order_by(col(Event.index))
-            .offset(skip)
-            .limit(limit)
+            stmt.order_by(col(Event.index)).offset(skip).limit(limit)
         ).all()
         return list(events), count
 

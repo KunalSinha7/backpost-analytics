@@ -2,6 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import type { ColumnDef } from "@tanstack/react-table"
 import { useState } from "react"
+import { useTablePageSize } from "@/hooks/useTablePageSize"
 import type { CompetitionPublic } from "@/client"
 import { SoccerService } from "@/client"
 import { DataTable } from "@/components/Common/DataTable"
@@ -22,6 +23,8 @@ export function CompetitionTable() {
   const navigate = useNavigate()
   const [countryFilter, setCountryFilter] = useState("all")
   const [genderFilter, setGenderFilter] = useState("all")
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useTablePageSize()
 
   if (data.count === 0) return null
 
@@ -35,6 +38,7 @@ export function CompetitionTable() {
       (countryFilter === "all" || c.country_name === countryFilter) &&
       (genderFilter === "all" || c.competition_gender === genderFilter),
   )
+  const pageData = filtered.slice(page * pageSize, (page + 1) * pageSize)
 
   const columns: ColumnDef<CompetitionPublic>[] = [
     {
@@ -79,7 +83,13 @@ export function CompetitionTable() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-3 items-center">
-        <Select value={countryFilter} onValueChange={setCountryFilter}>
+        <Select
+          value={countryFilter}
+          onValueChange={(v) => {
+            setCountryFilter(v)
+            setPage(0)
+          }}
+        >
           <SelectTrigger className="w-44">
             <SelectValue placeholder="Country" />
           </SelectTrigger>
@@ -92,7 +102,13 @@ export function CompetitionTable() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={genderFilter} onValueChange={setGenderFilter}>
+        <Select
+          value={genderFilter}
+          onValueChange={(v) => {
+            setGenderFilter(v)
+            setPage(0)
+          }}
+        >
           <SelectTrigger className="w-36">
             <SelectValue placeholder="Gender" />
           </SelectTrigger>
@@ -111,7 +127,20 @@ export function CompetitionTable() {
           No competitions match the selected filters.
         </p>
       ) : (
-        <DataTable columns={columns} data={filtered} />
+        <DataTable
+          columns={columns}
+          data={pageData}
+          serverPagination={{
+            totalCount: filtered.length,
+            page,
+            pageSize,
+            onPageChange: setPage,
+            onPageSizeChange: (s) => {
+              setPageSize(s)
+              setPage(0)
+            },
+          }}
+        />
       )}
     </div>
   )

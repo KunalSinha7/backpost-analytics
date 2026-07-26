@@ -22,9 +22,17 @@ def read_events(
     match_id: uuid.UUID,
     skip: int = 0,
     limit: int = 10000,
+    type_name: str | None = None,
+    team: str | None = None,
+    period: int | None = None,
 ) -> Any:
     events, count = EventService(session).list_by_match(
-        match_id, skip=skip, limit=limit
+        match_id,
+        skip=skip,
+        limit=limit,
+        type_name=type_name,
+        team=team,
+        period=period,
     )
     return EventsPublic(
         data=[EventPublic.model_validate(e) for e in events],

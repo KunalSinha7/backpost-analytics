@@ -19,9 +19,22 @@ class EventService:
         self.match_repo = MatchRepository(session)
 
     def list_by_match(
-        self, match_id: uuid.UUID, skip: int = 0, limit: int = 10000
+        self,
+        match_id: uuid.UUID,
+        skip: int = 0,
+        limit: int = 10000,
+        type_name: str | None = None,
+        team: str | None = None,
+        period: int | None = None,
     ) -> tuple[list[Event], int]:
-        return self.event_repo.list_by_match(match_id, skip=skip, limit=limit)
+        return self.event_repo.list_by_match(
+            match_id,
+            skip=skip,
+            limit=limit,
+            type_name=type_name,
+            team=team,
+            period=period,
+        )
 
     def ingest_for_competition(
         self, competition_statsbomb_id: int, season_id: int

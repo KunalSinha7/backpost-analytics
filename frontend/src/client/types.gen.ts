@@ -263,6 +263,7 @@ export type ReadMatchesData = {
     hasEvents?: boolean;
     limit?: number;
     skip?: number;
+    teamName?: (string | null);
 };
 
 export type ReadMatchesResponse = (SoccerMatchesPublic);
@@ -270,7 +271,10 @@ export type ReadMatchesResponse = (SoccerMatchesPublic);
 export type ReadEventsData = {
     limit?: number;
     matchId: string;
+    period?: (number | null);
     skip?: number;
+    team?: (string | null);
+    typeName?: (string | null);
 };
 
 export type ReadEventsResponse = (EventsPublic);

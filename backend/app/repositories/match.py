@@ -1,6 +1,7 @@
 import uuid
 
-from sqlmodel import Session, col, func, select
+from sqlalchemy import and_
+from sqlmodel import Session, col, func, or_, select
 
 from app.models.match import SoccerMatch
 
@@ -15,12 +16,25 @@ class MatchRepository:
         limit: int = 100,
         competition_id: uuid.UUID | None = None,
         has_events: bool = False,
+        team_name: str | None = None,
     ) -> tuple[list[SoccerMatch], int]:
         stmt = select(SoccerMatch)
         count_stmt = select(func.count()).select_from(SoccerMatch)
         if competition_id is not None:
             stmt = stmt.where(SoccerMatch.competition_id == competition_id)
             count_stmt = count_stmt.where(SoccerMatch.competition_id == competition_id)
+        if team_name is not None:
+            words = team_name.strip().split()
+            if words:
+                home_match = and_(
+                    *[col(SoccerMatch.home_team).ilike(f"%{w}%") for w in words]
+                )
+                away_match = and_(
+                    *[col(SoccerMatch.away_team).ilike(f"%{w}%") for w in words]
+                )
+                team_filter = or_(home_match, away_match)
+                stmt = stmt.where(team_filter)
+                count_stmt = count_stmt.where(team_filter)
         if has_events:
             from app.models.event import Event
 
