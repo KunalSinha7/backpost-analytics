@@ -21,9 +21,14 @@ class MatchService:
         limit: int = 100,
         competition_id: uuid.UUID | None = None,
         has_events: bool = False,
-    ) -> tuple[list[SoccerMatch], int]:
+        team_name: str | None = None,
+    ) -> tuple[list[SoccerMatch], int, set[uuid.UUID]]:
         return self.repo.list_all(
-            skip=skip, limit=limit, competition_id=competition_id, has_events=has_events
+            skip=skip,
+            limit=limit,
+            competition_id=competition_id,
+            has_events=has_events,
+            team_name=team_name,
         )
 
     def ingest(self, competitions: list[Competition]) -> int:

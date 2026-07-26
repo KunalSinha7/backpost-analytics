@@ -1,6 +1,7 @@
 import uuid
 
-from sqlmodel import Session, col, func, select
+from sqlalchemy import and_
+from sqlmodel import Session, col, func, or_, select
 
 from app.models.match import SoccerMatch
 
@@ -15,12 +16,25 @@ class MatchRepository:
         limit: int = 100,
         competition_id: uuid.UUID | None = None,
         has_events: bool = False,
-    ) -> tuple[list[SoccerMatch], int]:
+        team_name: str | None = None,
+    ) -> tuple[list[SoccerMatch], int, set[uuid.UUID]]:
         stmt = select(SoccerMatch)
         count_stmt = select(func.count()).select_from(SoccerMatch)
         if competition_id is not None:
             stmt = stmt.where(SoccerMatch.competition_id == competition_id)
             count_stmt = count_stmt.where(SoccerMatch.competition_id == competition_id)
+        if team_name is not None:
+            words = team_name.strip().split()
+            if words:
+                home_match = and_(
+                    *[col(SoccerMatch.home_team).ilike(f"%{w}%") for w in words]
+                )
+                away_match = and_(
+                    *[col(SoccerMatch.away_team).ilike(f"%{w}%") for w in words]
+                )
+                team_filter = or_(home_match, away_match)
+                stmt = stmt.where(team_filter)
+                count_stmt = count_stmt.where(team_filter)
         if has_events:
             from app.models.event import Event
 
@@ -33,7 +47,22 @@ class MatchRepository:
         rows = self.session.exec(
             stmt.order_by(col(SoccerMatch.match_date).desc()).offset(skip).limit(limit)
         ).all()
-        return list(rows), count
+
+        match_ids = [r.id for r in rows]
+        if match_ids:
+            from app.models.event import Event
+
+            has_events_ids: set[uuid.UUID] = set(
+                self.session.exec(
+                    select(Event.match_id)
+                    .where(col(Event.match_id).in_(match_ids))
+                    .distinct()
+                ).all()
+            )
+        else:
+            has_events_ids = set()
+
+        return list(rows), count, has_events_ids
 
     def get_existing_statsbomb_ids(self) -> set[int]:
         return {m.statsbomb_id for m in self.session.exec(select(SoccerMatch)).all()}

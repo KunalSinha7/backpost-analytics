@@ -149,6 +149,11 @@ export const CompetitionPublicSchema = {
             type: 'string',
             format: 'uuid',
             title: 'Id'
+        },
+        match_count: {
+            type: 'integer',
+            title: 'Match Count',
+            default: 0
         }
     },
     type: 'object',
@@ -832,6 +837,11 @@ export const SoccerMatchPublicSchema = {
             type: 'string',
             format: 'uuid',
             title: 'Id'
+        },
+        has_events: {
+            type: 'boolean',
+            title: 'Has Events',
+            default: false
         }
     },
     type: 'object',

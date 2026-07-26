@@ -32,7 +32,7 @@ def test_competition_list_all_returns_seeded(db: Session) -> None:
     repo = CompetitionRepository(db)
     rows, count = repo.list_all()
     assert count >= 1
-    assert any(c.statsbomb_id == 1001 for c in rows)
+    assert any(c.statsbomb_id == 1001 for c, _ in rows)
 
 
 def test_competition_get_existing_keys(db: Session) -> None:
@@ -62,7 +62,7 @@ def test_match_list_all(db: Session) -> None:
     comp = create_competition(db, statsbomb_id=2001, season_id=2001)
     create_match(db, comp.id, statsbomb_id=20001)
     repo = MatchRepository(db)
-    rows, count = repo.list_all()
+    rows, count, _ = repo.list_all()
     assert count >= 1
     assert any(m.statsbomb_id == 20001 for m in rows)
 
@@ -71,7 +71,7 @@ def test_match_list_all_filter_by_competition(db: Session) -> None:
     comp = create_competition(db, statsbomb_id=2002, season_id=2002)
     create_match(db, comp.id, statsbomb_id=20002)
     repo = MatchRepository(db)
-    rows, count = repo.list_all(competition_id=comp.id)
+    rows, count, _ = repo.list_all(competition_id=comp.id)
     assert count >= 1
     assert all(m.competition_id == comp.id for m in rows)
 
@@ -83,7 +83,7 @@ def test_match_list_all_has_events_filter(db: Session) -> None:
     create_event(db, match_with.id)
 
     repo = MatchRepository(db)
-    rows, count = repo.list_all(has_events=True)
+    rows, count, _ = repo.list_all(has_events=True)
     ids = [m.id for m in rows]
     assert match_with.id in ids
     assert match_without.id not in ids

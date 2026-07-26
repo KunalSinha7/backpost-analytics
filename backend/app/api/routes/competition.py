@@ -1,17 +1,19 @@
 import logging
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import SQLModel
 
-from app.api.deps import SessionDep, SuperuserDep
+from app.api.deps import SessionDep, get_current_active_superuser
 from app.exceptions.competition import CompetitionNotFoundError
+from app.models import User
 from app.models.competition import CompetitionPublic, CompetitionsPublic
 from app.services.competition import CompetitionService
 from app.services.match import MatchService
 
 router = APIRouter(prefix="/competitions", tags=["soccer"])
 logger = logging.getLogger(__name__)
+SuperuserDep = Annotated[User, Depends(get_current_active_superuser)]
 
 
 class IngestResult(SQLModel):
@@ -20,19 +22,33 @@ class IngestResult(SQLModel):
 
 
 @router.get("/", response_model=CompetitionsPublic, operation_id="readCompetitions")
-def read_competitions(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
-    rows, count = CompetitionService(session).list_competitions(skip=skip, limit=limit)
+def read_competitions(
+    session: SessionDep,
+    skip: int = 0,
+    limit: int = 100,
+    has_matches: bool = False,
+) -> Any:
+    rows, count = CompetitionService(session).list_competitions(
+        skip=skip, limit=limit, has_matches=has_matches
+    )
     return CompetitionsPublic(
-        data=[CompetitionPublic.model_validate(r) for r in rows],
+        data=[
+            CompetitionPublic.model_validate(comp).model_copy(
+                update={"match_count": match_count}
+            )
+            for comp, match_count in rows
+        ],
         count=count,
     )
 
 
 @router.post("/ingest", response_model=IngestResult, operation_id="ingestSoccerData")
 def ingest_soccer_data(session: SessionDep, _current_user: SuperuserDep) -> Any:
+    svc = CompetitionService(session)
+    match_svc = MatchService(session)
     try:
-        n_comps, competitions = CompetitionService(session).ingest()
-        n_matches = MatchService(session).ingest(competitions)
+        n_comps, competitions = svc.ingest()
+        n_matches = match_svc.ingest(competitions)
         session.commit()
     except CompetitionNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e

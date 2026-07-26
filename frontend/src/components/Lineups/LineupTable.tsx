@@ -1,8 +1,10 @@
 import { useSuspenseQuery } from "@tanstack/react-query"
 import type { ColumnDef } from "@tanstack/react-table"
+import { useState } from "react"
 import type { LineupPublic } from "@/client"
 import { SoccerService } from "@/client"
 import { DataTable } from "@/components/Common/DataTable"
+import { Input } from "@/components/ui/input"
 
 const columns: ColumnDef<LineupPublic>[] = [
   {
@@ -102,6 +104,8 @@ export function LineupTable({ matchId }: LineupTableProps) {
     queryFn: () => SoccerService.readLineups({ matchId }),
   })
 
+  const [playerSearch, setPlayerSearch] = useState("")
+
   if (data.count === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -110,20 +114,46 @@ export function LineupTable({ matchId }: LineupTableProps) {
     )
   }
 
-  const byTeam = data.data.reduce<Record<string, LineupPublic[]>>((acc, p) => {
-    const team = p.team_name ?? "Unknown"
-    if (!acc[team]) acc[team] = []
-    acc[team].push(p)
-    return acc
-  }, {})
+  const searchLower = playerSearch.toLowerCase()
+  const byTeam = data.data
+    .filter(
+      (p) =>
+        playerSearch === "" ||
+        p.player_name.toLowerCase().includes(searchLower),
+    )
+    .reduce<Record<string, LineupPublic[]>>((acc, p) => {
+      const team = p.team_name ?? "Unknown"
+      if (!acc[team]) acc[team] = []
+      acc[team].push(p)
+      return acc
+    }, {})
 
   const teams = Object.entries(byTeam).sort(([a], [b]) => a.localeCompare(b))
 
   return (
-    <div className="grid grid-cols-2 gap-6">
-      {teams.map(([teamName, players]) => (
-        <TeamPanel key={teamName} teamName={teamName} players={players} />
-      ))}
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-3">
+        <Input
+          placeholder="Search player…"
+          value={playerSearch}
+          onChange={(e) => setPlayerSearch(e.target.value)}
+          className="w-64 h-8 text-sm"
+        />
+        {playerSearch && (
+          <button
+            type="button"
+            onClick={() => setPlayerSearch("")}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-6">
+        {teams.map(([teamName, players]) => (
+          <TeamPanel key={teamName} teamName={teamName} players={players} />
+        ))}
+      </div>
     </div>
   )
 }

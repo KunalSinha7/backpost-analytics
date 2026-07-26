@@ -19,11 +19,21 @@ def read_matches(
     limit: int = 100,
     competition_id: uuid.UUID | None = None,
     has_events: bool = False,
+    team_name: str | None = None,
 ) -> Any:
-    rows, count = MatchService(session).list_matches(
-        skip=skip, limit=limit, competition_id=competition_id, has_events=has_events
+    rows, count, has_events_ids = MatchService(session).list_matches(
+        skip=skip,
+        limit=limit,
+        competition_id=competition_id,
+        has_events=has_events,
+        team_name=team_name,
     )
     return SoccerMatchesPublic(
-        data=[SoccerMatchPublic.model_validate(r) for r in rows],
+        data=[
+            SoccerMatchPublic.model_validate(r).model_copy(
+                update={"has_events": r.id in has_events_ids}
+            )
+            for r in rows
+        ],
         count=count,
     )

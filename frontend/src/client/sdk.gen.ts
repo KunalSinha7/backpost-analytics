@@ -124,6 +124,7 @@ export class SoccerService {
      * @param data The data for the request.
      * @param data.skip
      * @param data.limit
+     * @param data.hasMatches
      * @returns CompetitionsPublic Successful Response
      * @throws ApiError
      */
@@ -133,7 +134,8 @@ export class SoccerService {
             url: '/api/v1/soccer/competitions/',
             query: {
                 skip: data.skip,
-                limit: data.limit
+                limit: data.limit,
+                has_matches: data.hasMatches
             },
             errors: {
                 422: 'Validation Error'
@@ -173,6 +175,7 @@ export class SoccerService {
      * @param data.limit
      * @param data.competitionId
      * @param data.hasEvents
+     * @param data.teamName
      * @returns SoccerMatchesPublic Successful Response
      * @throws ApiError
      */
@@ -184,7 +187,8 @@ export class SoccerService {
                 skip: data.skip,
                 limit: data.limit,
                 competition_id: data.competitionId,
-                has_events: data.hasEvents
+                has_events: data.hasEvents,
+                team_name: data.teamName
             },
             errors: {
                 422: 'Validation Error'
@@ -198,6 +202,9 @@ export class SoccerService {
      * @param data.matchId
      * @param data.skip
      * @param data.limit
+     * @param data.typeName
+     * @param data.team
+     * @param data.period
      * @returns EventsPublic Successful Response
      * @throws ApiError
      */
@@ -208,7 +215,10 @@ export class SoccerService {
             query: {
                 match_id: data.matchId,
                 skip: data.skip,
-                limit: data.limit
+                limit: data.limit,
+                type_name: data.typeName,
+                team: data.team,
+                period: data.period
             },
             errors: {
                 422: 'Validation Error'

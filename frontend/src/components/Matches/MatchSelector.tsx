@@ -10,9 +10,13 @@ import {
 
 interface MatchSelectorProps {
   onSelect: (matchId: string) => void
+  defaultMatchId?: string
 }
 
-export function MatchSelector({ onSelect }: MatchSelectorProps) {
+export function MatchSelector({
+  onSelect,
+  defaultMatchId,
+}: MatchSelectorProps) {
   const { data } = useSuspenseQuery({
     queryKey: ["matches", "with-events"],
     queryFn: () =>
@@ -28,7 +32,7 @@ export function MatchSelector({ onSelect }: MatchSelectorProps) {
   }
 
   return (
-    <Select onValueChange={onSelect}>
+    <Select onValueChange={onSelect} defaultValue={defaultMatchId}>
       <SelectTrigger className="w-full max-w-md">
         <SelectValue placeholder="Select a match…" />
       </SelectTrigger>
