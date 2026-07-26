@@ -17,7 +17,7 @@ class MatchRepository:
         competition_id: uuid.UUID | None = None,
         has_events: bool = False,
         team_name: str | None = None,
-    ) -> tuple[list[SoccerMatch], int]:
+    ) -> tuple[list[SoccerMatch], int, set[uuid.UUID]]:
         stmt = select(SoccerMatch)
         count_stmt = select(func.count()).select_from(SoccerMatch)
         if competition_id is not None:
@@ -47,7 +47,22 @@ class MatchRepository:
         rows = self.session.exec(
             stmt.order_by(col(SoccerMatch.match_date).desc()).offset(skip).limit(limit)
         ).all()
-        return list(rows), count
+
+        match_ids = [r.id for r in rows]
+        if match_ids:
+            from app.models.event import Event
+
+            has_events_ids: set[uuid.UUID] = set(
+                self.session.exec(
+                    select(Event.match_id)
+                    .where(Event.match_id.in_(match_ids))
+                    .distinct()
+                ).all()
+            )
+        else:
+            has_events_ids = set()
+
+        return list(rows), count, has_events_ids
 
     def get_existing_statsbomb_ids(self) -> set[int]:
         return {m.statsbomb_id for m in self.session.exec(select(SoccerMatch)).all()}

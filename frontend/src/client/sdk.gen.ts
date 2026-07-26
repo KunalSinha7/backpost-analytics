@@ -124,6 +124,7 @@ export class SoccerService {
      * @param data The data for the request.
      * @param data.skip
      * @param data.limit
+     * @param data.hasMatches
      * @returns CompetitionsPublic Successful Response
      * @throws ApiError
      */
@@ -133,7 +134,8 @@ export class SoccerService {
             url: '/api/v1/soccer/competitions/',
             query: {
                 skip: data.skip,
-                limit: data.limit
+                limit: data.limit,
+                has_matches: data.hasMatches
             },
             errors: {
                 422: 'Validation Error'

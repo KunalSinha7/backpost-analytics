@@ -23,6 +23,7 @@ export type CompetitionPublic = {
     match_updated_360?: (string | null);
     match_available_360?: (string | null);
     id: string;
+    match_count?: number;
 };
 
 export type CompetitionsPublic = {
@@ -143,6 +144,7 @@ export type SoccerMatchPublic = {
     last_updated?: (string | null);
     match_status_360?: (string | null);
     id: string;
+    has_events?: boolean;
 };
 
 export type StatsBombCompetition = {
@@ -248,6 +250,7 @@ export type PrivateCreateUserData = {
 export type PrivateCreateUserResponse = (UserPublic);
 
 export type ReadCompetitionsData = {
+    hasMatches?: boolean;
     limit?: number;
     skip?: number;
 };

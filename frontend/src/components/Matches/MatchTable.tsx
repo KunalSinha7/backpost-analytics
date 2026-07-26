@@ -1,9 +1,8 @@
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import type { ColumnDef } from "@tanstack/react-table"
-import { useState } from "react"
 import { Search } from "lucide-react"
-import { useTablePageSize } from "@/hooks/useTablePageSize"
+import { useState } from "react"
 import type { SoccerMatchPublic } from "@/client"
 import { SoccerService } from "@/client"
 import { DataTable } from "@/components/Common/DataTable"
@@ -15,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useTablePageSize } from "@/hooks/useTablePageSize"
 
 interface MatchTableProps {
   initialCompetitionId?: string
@@ -36,7 +36,13 @@ export function MatchTable({ initialCompetitionId }: MatchTableProps) {
   }
 
   const { data } = useSuspenseQuery({
-    queryKey: ["matches", competitionFilter, committedTeamSearch, page, pageSize],
+    queryKey: [
+      "matches",
+      competitionFilter,
+      committedTeamSearch,
+      page,
+      pageSize,
+    ],
     queryFn: () =>
       SoccerService.readMatches({
         skip: page * pageSize,
@@ -46,9 +52,12 @@ export function MatchTable({ initialCompetitionId }: MatchTableProps) {
         teamName: committedTeamSearch || undefined,
       }),
   })
+
+  // Only show competitions that have ingested matches in the dropdown
   const { data: compsData } = useSuspenseQuery({
-    queryKey: ["competitions"],
-    queryFn: () => SoccerService.readCompetitions({ skip: 0, limit: 500 }),
+    queryKey: ["competitions", "hasMatches"],
+    queryFn: () =>
+      SoccerService.readCompetitions({ skip: 0, limit: 500, hasMatches: true }),
   })
 
   const sortedComps = [...(compsData.data ?? [])].sort((a, b) =>
@@ -78,22 +87,33 @@ export function MatchTable({ initialCompetitionId }: MatchTableProps) {
     {
       id: "fixture",
       header: "Fixture",
-      cell: ({ row }) => (
-        <button
-          type="button"
-          onClick={() =>
-            navigate({
-              to: "/soccer/events",
-              search: { matchId: row.original.id },
-            })
-          }
-          className="font-medium text-left hover:underline hover:text-primary cursor-pointer"
-        >
-          {row.original.home_team}{" "}
-          <span className="text-muted-foreground font-normal">vs</span>{" "}
-          {row.original.away_team}
-        </button>
-      ),
+      cell: ({ row }) => {
+        const hasEvents = row.original.has_events ?? false
+        const label = (
+          <>
+            {row.original.home_team}{" "}
+            <span className="text-muted-foreground font-normal">vs</span>{" "}
+            {row.original.away_team}
+          </>
+        )
+        if (!hasEvents) {
+          return <span className="font-medium">{label}</span>
+        }
+        return (
+          <button
+            type="button"
+            onClick={() =>
+              navigate({
+                to: "/soccer/events",
+                search: { matchId: row.original.id },
+              })
+            }
+            className="font-medium text-left hover:underline hover:text-primary cursor-pointer"
+          >
+            {label}
+          </button>
+        )
+      },
     },
     {
       id: "score",

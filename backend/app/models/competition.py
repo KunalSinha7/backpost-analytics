@@ -29,6 +29,7 @@ class Competition(CompetitionBase, table=True):
 
 class CompetitionPublic(CompetitionBase):
     id: uuid.UUID
+    match_count: int = 0
 
 
 class CompetitionsPublic(SQLModel):

@@ -39,6 +39,7 @@ class SoccerMatch(SoccerMatchBase, table=True):
 
 class SoccerMatchPublic(SoccerMatchBase):
     id: uuid.UUID
+    has_events: bool = False
 
 
 class SoccerMatchesPublic(SQLModel):

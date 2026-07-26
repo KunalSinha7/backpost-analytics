@@ -2,7 +2,6 @@ import { useSuspenseQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import type { ColumnDef } from "@tanstack/react-table"
 import { useState } from "react"
-import { useTablePageSize } from "@/hooks/useTablePageSize"
 import type { CompetitionPublic } from "@/client"
 import { SoccerService } from "@/client"
 import { DataTable } from "@/components/Common/DataTable"
@@ -13,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useTablePageSize } from "@/hooks/useTablePageSize"
 
 export function CompetitionTable() {
   const { data } = useSuspenseQuery({
@@ -28,9 +28,11 @@ export function CompetitionTable() {
 
   if (data.count === 0) return null
 
-  const countries = [...new Set(data.data.map((c) => c.country_name))].sort()
+  // Only surface country/gender options for competitions that have ingested matches
+  const withMatches = data.data.filter((c) => (c.match_count ?? 0) > 0)
+  const countries = [...new Set(withMatches.map((c) => c.country_name))].sort()
   const genders = [
-    ...new Set(data.data.map((c) => c.competition_gender)),
+    ...new Set(withMatches.map((c) => c.competition_gender)),
   ].sort()
 
   const filtered = data.data.filter(
@@ -44,20 +46,28 @@ export function CompetitionTable() {
     {
       accessorKey: "competition_name",
       header: "Competition",
-      cell: ({ row }) => (
-        <button
-          type="button"
-          onClick={() =>
-            navigate({
-              to: "/soccer/matches",
-              search: { competitionId: row.original.id },
-            })
-          }
-          className="font-medium text-left hover:underline hover:text-primary cursor-pointer"
-        >
-          {row.original.competition_name}
-        </button>
-      ),
+      cell: ({ row }) => {
+        const hasMatches = (row.original.match_count ?? 0) > 0
+        if (!hasMatches) {
+          return (
+            <span className="font-medium">{row.original.competition_name}</span>
+          )
+        }
+        return (
+          <button
+            type="button"
+            onClick={() =>
+              navigate({
+                to: "/soccer/matches",
+                search: { competitionId: row.original.id },
+              })
+            }
+            className="font-medium text-left hover:underline hover:text-primary cursor-pointer"
+          >
+            {row.original.competition_name}
+          </button>
+        )
+      },
     },
     { accessorKey: "country_name", header: "Country" },
     { accessorKey: "season_name", header: "Season" },

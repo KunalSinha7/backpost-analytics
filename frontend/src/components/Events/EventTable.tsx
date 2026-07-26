@@ -1,7 +1,6 @@
 import { useSuspenseQuery } from "@tanstack/react-query"
 import type { ColumnDef } from "@tanstack/react-table"
 import { useState } from "react"
-import { useTablePageSize } from "@/hooks/useTablePageSize"
 import type { EventPublic } from "@/client"
 import { SoccerService } from "@/client"
 import { DataTable } from "@/components/Common/DataTable"
@@ -12,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useTablePageSize } from "@/hooks/useTablePageSize"
 
 function formatLocation(
   x: number | null | undefined,
