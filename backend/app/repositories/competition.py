@@ -1,5 +1,3 @@
-import uuid
-
 from sqlalchemy import func
 from sqlmodel import Session, col, select
 
@@ -19,23 +17,26 @@ class CompetitionRepository:
         count_stmt = select(func.count()).select_from(Competition)
         if has_matches:
             match_exists = (
-                select(SoccerMatch.id)
-                .where(SoccerMatch.competition_id == Competition.id)
+                select(col(SoccerMatch.id))
+                .where(col(SoccerMatch.competition_id) == col(Competition.id))
                 .exists()
             )
             count_stmt = count_stmt.where(match_exists)
         count = self.session.exec(count_stmt).one()
 
         stmt = (
-            select(Competition, func.count(SoccerMatch.id).label("match_count"))
-            .outerjoin(SoccerMatch, SoccerMatch.competition_id == Competition.id)
-            .group_by(Competition.id)
+            select(Competition, func.count(col(SoccerMatch.id)).label("match_count"))
+            .outerjoin(
+                SoccerMatch,
+                col(SoccerMatch.competition_id) == col(Competition.id),
+            )
+            .group_by(col(Competition.id))
             .order_by(col(Competition.competition_name))
             .offset(skip)
             .limit(limit)
         )
         if has_matches:
-            stmt = stmt.having(func.count(SoccerMatch.id) > 0)
+            stmt = stmt.having(func.count(col(SoccerMatch.id)) > 0)
 
         rows = self.session.exec(stmt).all()
         return [(Competition.model_validate(r[0]), r[1]) for r in rows], count

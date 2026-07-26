@@ -55,7 +55,7 @@ class MatchRepository:
             has_events_ids: set[uuid.UUID] = set(
                 self.session.exec(
                     select(Event.match_id)
-                    .where(Event.match_id.in_(match_ids))
+                    .where(col(Event.match_id).in_(match_ids))
                     .distinct()
                 ).all()
             )
