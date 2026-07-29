@@ -5,6 +5,7 @@ import {
   Home,
   ListOrdered,
   Trophy,
+  UserRound,
   Users,
   Zap,
 } from "lucide-react"
@@ -33,6 +34,7 @@ const mainItems: NavItem[] = [{ icon: Home, title: "Dashboard", path: "/" }]
 const soccerItems: NavItem[] = [
   { icon: Trophy, title: "Competitions", path: "/soccer" },
   { icon: Calendar, title: "Matches", path: "/soccer/matches" },
+  { icon: UserRound, title: "Players", path: "/soccer/players" },
   { icon: Zap, title: "Events", path: "/soccer/events" },
   { icon: ListOrdered, title: "Lineups", path: "/soccer/lineups" },
 ]

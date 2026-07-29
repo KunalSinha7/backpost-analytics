@@ -569,6 +569,76 @@ export const NewPasswordSchema = {
     title: 'NewPassword'
 } as const;
 
+export const PlayerPublicSchema = {
+    properties: {
+        statsbomb_id: {
+            type: 'integer',
+            title: 'Statsbomb Id'
+        },
+        name: {
+            type: 'string',
+            maxLength: 255,
+            title: 'Name'
+        },
+        nickname: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 255
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Nickname'
+        },
+        nationality: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 100
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Nationality'
+        },
+        id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Id'
+        },
+        match_count: {
+            type: 'integer',
+            title: 'Match Count',
+            default: 0
+        }
+    },
+    type: 'object',
+    required: ['statsbomb_id', 'name', 'id'],
+    title: 'PlayerPublic'
+} as const;
+
+export const PlayersPublicSchema = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/PlayerPublic'
+            },
+            type: 'array',
+            title: 'Data'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        }
+    },
+    type: 'object',
+    required: ['data', 'count'],
+    title: 'PlayersPublic'
+} as const;
+
 export const PrivateUserCreateSchema = {
     properties: {
         email: {

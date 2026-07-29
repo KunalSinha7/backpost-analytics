@@ -6,6 +6,7 @@ from sqlmodel import Session
 from app.models.lineup import Lineup
 from app.repositories.lineup import LineupRepository
 from app.repositories.match import MatchRepository
+from app.repositories.player import PlayerRepository
 from app.utils.statsbomb import StatsBombLineupPlayerRow
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,7 @@ class LineupService:
         self.session = session
         self.lineup_repo = LineupRepository(session)
         self.match_repo = MatchRepository(session)
+        self.player_repo = PlayerRepository(session)
 
     def list_by_match(self, match_id: uuid.UUID) -> tuple[list[Lineup], int]:
         return self.lineup_repo.list_by_match(match_id)
@@ -59,6 +61,7 @@ class LineupService:
                     batch.append(lineup)
 
             self.lineup_repo.add_batch(batch)
+            self.player_repo.upsert_from_lineup_batch(batch)
             self.session.commit()
             total_imported += len(batch)
             logger.info(

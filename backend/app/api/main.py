@@ -7,6 +7,7 @@ from app.api.routes import (
     lineup,
     login,
     match,
+    player,
     private,
     users,
     utils,
@@ -24,6 +25,7 @@ soccer_router.include_router(match.router)
 soccer_router.include_router(event.router)
 soccer_router.include_router(lineup.router)
 soccer_router.include_router(frame360.router)
+soccer_router.include_router(player.router)
 api_router.include_router(soccer_router)
 
 if settings.ENVIRONMENT == "local":
