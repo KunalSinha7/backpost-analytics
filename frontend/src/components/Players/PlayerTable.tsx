@@ -33,6 +33,16 @@ export function PlayerTable() {
     {
       accessorKey: "name",
       header: "Name",
+      cell: ({ row }) => (
+        <div>
+          <div className="font-medium">{row.original.name}</div>
+          {row.original.nickname && (
+            <div className="text-xs text-muted-foreground">
+              {row.original.nickname}
+            </div>
+          )}
+        </div>
+      ),
     },
     {
       accessorKey: "nationality",
@@ -40,6 +50,15 @@ export function PlayerTable() {
       cell: ({ row }) => (
         <span className="text-muted-foreground">
           {row.original.nationality ?? "—"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "statsbomb_id",
+      header: "StatsBomb ID",
+      cell: ({ row }) => (
+        <span className="font-mono text-xs text-muted-foreground">
+          {row.original.statsbomb_id}
         </span>
       ),
     },
