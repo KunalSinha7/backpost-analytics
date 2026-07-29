@@ -38,12 +38,9 @@ class PlayerRepository:
         return [(Player.model_validate(r[0]), r[1]) for r in rows], count
 
     def upsert_from_lineup_batch(self, lineups: list[Lineup]) -> int:
-        existing_ids = {
-            sid
-            for sid in self.session.exec(
-                select(col(Player.statsbomb_id))
-            ).all()
-        }
+        existing_ids = set(
+            self.session.exec(select(col(Player.statsbomb_id))).all()
+        )
         new_players = []
         seen: set[int] = set()
         for lineup in lineups:
