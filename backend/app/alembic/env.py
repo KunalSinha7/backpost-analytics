@@ -26,6 +26,7 @@ from app.models.match import SoccerMatch  # noqa
 from app.models.event import Event  # noqa
 from app.models.lineup import Lineup  # noqa
 from app.models.frame360 import Frame360  # noqa
+from app.models.player import Player  # noqa
 
 target_metadata = SQLModel.metadata
 

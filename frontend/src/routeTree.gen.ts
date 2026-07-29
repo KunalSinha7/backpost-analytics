@@ -19,6 +19,7 @@ import { Route as LayoutSoccerRouteImport } from './routes/_layout/soccer'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
 import { Route as LayoutSoccerIndexRouteImport } from './routes/_layout/soccer/index'
+import { Route as LayoutSoccerPlayersRouteImport } from './routes/_layout/soccer/players'
 import { Route as LayoutSoccerMatchesRouteImport } from './routes/_layout/soccer/matches'
 import { Route as LayoutSoccerLineupsRouteImport } from './routes/_layout/soccer/lineups'
 import { Route as LayoutSoccerIngestRouteImport } from './routes/_layout/soccer/ingest'
@@ -73,6 +74,11 @@ const LayoutSoccerIndexRoute = LayoutSoccerIndexRouteImport.update({
   path: '/',
   getParentRoute: () => LayoutSoccerRoute,
 } as any)
+const LayoutSoccerPlayersRoute = LayoutSoccerPlayersRouteImport.update({
+  id: '/players',
+  path: '/players',
+  getParentRoute: () => LayoutSoccerRoute,
+} as any)
 const LayoutSoccerMatchesRoute = LayoutSoccerMatchesRouteImport.update({
   id: '/matches',
   path: '/matches',
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/soccer/ingest': typeof LayoutSoccerIngestRoute
   '/soccer/lineups': typeof LayoutSoccerLineupsRoute
   '/soccer/matches': typeof LayoutSoccerMatchesRoute
+  '/soccer/players': typeof LayoutSoccerPlayersRoute
   '/soccer/': typeof LayoutSoccerIndexRoute
 }
 export interface FileRoutesByTo {
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/soccer/ingest': typeof LayoutSoccerIngestRoute
   '/soccer/lineups': typeof LayoutSoccerLineupsRoute
   '/soccer/matches': typeof LayoutSoccerMatchesRoute
+  '/soccer/players': typeof LayoutSoccerPlayersRoute
   '/soccer': typeof LayoutSoccerIndexRoute
 }
 export interface FileRoutesById {
@@ -138,6 +146,7 @@ export interface FileRoutesById {
   '/_layout/soccer/ingest': typeof LayoutSoccerIngestRoute
   '/_layout/soccer/lineups': typeof LayoutSoccerLineupsRoute
   '/_layout/soccer/matches': typeof LayoutSoccerMatchesRoute
+  '/_layout/soccer/players': typeof LayoutSoccerPlayersRoute
   '/_layout/soccer/': typeof LayoutSoccerIndexRoute
 }
 export interface FileRouteTypes {
@@ -155,6 +164,7 @@ export interface FileRouteTypes {
     | '/soccer/ingest'
     | '/soccer/lineups'
     | '/soccer/matches'
+    | '/soccer/players'
     | '/soccer/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -169,6 +179,7 @@ export interface FileRouteTypes {
     | '/soccer/ingest'
     | '/soccer/lineups'
     | '/soccer/matches'
+    | '/soccer/players'
     | '/soccer'
   id:
     | '__root__'
@@ -185,6 +196,7 @@ export interface FileRouteTypes {
     | '/_layout/soccer/ingest'
     | '/_layout/soccer/lineups'
     | '/_layout/soccer/matches'
+    | '/_layout/soccer/players'
     | '/_layout/soccer/'
   fileRoutesById: FileRoutesById
 }
@@ -268,6 +280,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSoccerIndexRouteImport
       parentRoute: typeof LayoutSoccerRoute
     }
+    '/_layout/soccer/players': {
+      id: '/_layout/soccer/players'
+      path: '/players'
+      fullPath: '/soccer/players'
+      preLoaderRoute: typeof LayoutSoccerPlayersRouteImport
+      parentRoute: typeof LayoutSoccerRoute
+    }
     '/_layout/soccer/matches': {
       id: '/_layout/soccer/matches'
       path: '/matches'
@@ -304,6 +323,7 @@ interface LayoutSoccerRouteChildren {
   LayoutSoccerIngestRoute: typeof LayoutSoccerIngestRoute
   LayoutSoccerLineupsRoute: typeof LayoutSoccerLineupsRoute
   LayoutSoccerMatchesRoute: typeof LayoutSoccerMatchesRoute
+  LayoutSoccerPlayersRoute: typeof LayoutSoccerPlayersRoute
   LayoutSoccerIndexRoute: typeof LayoutSoccerIndexRoute
 }
 
@@ -312,6 +332,7 @@ const LayoutSoccerRouteChildren: LayoutSoccerRouteChildren = {
   LayoutSoccerIngestRoute: LayoutSoccerIngestRoute,
   LayoutSoccerLineupsRoute: LayoutSoccerLineupsRoute,
   LayoutSoccerMatchesRoute: LayoutSoccerMatchesRoute,
+  LayoutSoccerPlayersRoute: LayoutSoccerPlayersRoute,
   LayoutSoccerIndexRoute: LayoutSoccerIndexRoute,
 }
 

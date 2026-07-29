@@ -107,6 +107,20 @@ export type NewPassword = {
     new_password: string;
 };
 
+export type PlayerPublic = {
+    statsbomb_id: number;
+    name: string;
+    nickname?: (string | null);
+    nationality?: (string | null);
+    id: string;
+    match_count?: number;
+};
+
+export type PlayersPublic = {
+    data: Array<PlayerPublic>;
+    count: number;
+};
+
 export type PrivateUserCreate = {
     email: string;
     password: string;
@@ -304,6 +318,14 @@ export type ReadFramesData = {
 };
 
 export type ReadFramesResponse = (Frames360Public);
+
+export type ReadPlayersData = {
+    limit?: number;
+    nameSearch?: (string | null);
+    skip?: number;
+};
+
+export type ReadPlayersResponse = (PlayersPublic);
 
 export type UsersReadUsersData = {
     limit?: number;
