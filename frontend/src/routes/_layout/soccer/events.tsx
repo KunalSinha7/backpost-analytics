@@ -10,7 +10,7 @@ export const Route = createFileRoute("/_layout/soccer/events")({
     matchId: typeof search.matchId === "string" ? search.matchId : undefined,
   }),
   component: EventsPage,
-  head: () => ({ meta: [{ title: "Events - StatsBomb Analytics" }] }),
+  head: () => ({ meta: [{ title: "Events - The Backpost" }] }),
 })
 
 function EventsPage() {

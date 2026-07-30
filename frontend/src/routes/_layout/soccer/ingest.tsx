@@ -22,7 +22,7 @@ import {
 
 export const Route = createFileRoute("/_layout/soccer/ingest")({
   component: IngestPage,
-  head: () => ({ meta: [{ title: "Ingest - StatsBomb Analytics" }] }),
+  head: () => ({ meta: [{ title: "Ingest - The Backpost" }] }),
 })
 
 function IngestPage() {

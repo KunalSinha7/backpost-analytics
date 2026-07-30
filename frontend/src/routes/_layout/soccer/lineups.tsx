@@ -10,7 +10,7 @@ export const Route = createFileRoute("/_layout/soccer/lineups")({
     matchId: typeof search.matchId === "string" ? search.matchId : undefined,
   }),
   component: LineupsPage,
-  head: () => ({ meta: [{ title: "Lineups - StatsBomb Analytics" }] }),
+  head: () => ({ meta: [{ title: "Lineups - The Backpost" }] }),
 })
 
 function LineupsPage() {
