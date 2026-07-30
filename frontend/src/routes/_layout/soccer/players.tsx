@@ -5,7 +5,7 @@ import { PlayerTable } from "@/components/Players/PlayerTable"
 
 export const Route = createFileRoute("/_layout/soccer/players")({
   component: PlayersPage,
-  head: () => ({ meta: [{ title: "Players - StatsBomb Analytics" }] }),
+  head: () => ({ meta: [{ title: "Players - The Backpost" }] }),
 })
 
 function PlayersPage() {

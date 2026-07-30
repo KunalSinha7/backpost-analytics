@@ -8,7 +8,7 @@ import PendingTable from "@/components/Pending/PendingTable"
 
 export const Route = createFileRoute("/_layout/soccer/")({
   component: CompetitionsPage,
-  head: () => ({ meta: [{ title: "Competitions - StatsBomb Analytics" }] }),
+  head: () => ({ meta: [{ title: "Competitions - The Backpost" }] }),
 })
 
 function CompetitionsContent() {

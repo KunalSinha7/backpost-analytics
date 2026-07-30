@@ -11,7 +11,7 @@ export const Route = createFileRoute("/_layout/soccer/matches")({
         : undefined,
   }),
   component: MatchesPage,
-  head: () => ({ meta: [{ title: "Matches - StatsBomb Analytics" }] }),
+  head: () => ({ meta: [{ title: "Matches - The Backpost" }] }),
 })
 
 function MatchesPage() {

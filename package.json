@@ -1,5 +1,5 @@
 {
-  "name": "fastapi-full-stack-template",
+  "name": "backpost-analytics",
   "private": true,
   "workspaces": [
     "frontend"
