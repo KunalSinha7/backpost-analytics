@@ -1,4 +1,5 @@
 import { useSuspenseQuery } from "@tanstack/react-query"
+import { useNavigate } from "@tanstack/react-router"
 import type { ColumnDef } from "@tanstack/react-table"
 import { useState } from "react"
 import type { EventPublic } from "@/client"
@@ -113,6 +114,7 @@ interface EventTableProps {
 }
 
 export function EventTable({ matchId }: EventTableProps) {
+  const navigate = useNavigate()
   const [typeFilter, setTypeFilter] = useState("all")
   const [teamFilter, setTeamFilter] = useState("all")
   const [periodFilter, setPeriodFilter] = useState("all")
@@ -235,6 +237,15 @@ export function EventTable({ matchId }: EventTableProps) {
       <DataTable
         columns={columns}
         data={data.data}
+        onRowClick={(event) =>
+          navigate({
+            to: "/soccer/visualize",
+            search: {
+              matchId,
+              possession: event.possession ?? undefined,
+            },
+          })
+        }
         serverPagination={{
           totalCount: data.count,
           page,

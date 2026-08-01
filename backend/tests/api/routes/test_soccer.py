@@ -158,6 +158,35 @@ def test_read_events(
     assert body["data"][0]["type_name"] == "Pass"
 
 
+def test_read_events_filter_by_player_and_possession(
+    client: TestClient, superuser_token_headers: dict, db: Session
+) -> None:
+    comp = create_competition(db, statsbomb_id=8021, season_id=8021)
+    match = create_match(db, comp.id, statsbomb_id=80021)
+    create_event(db, match.id, player="Alice", possession=1, index=1)
+    create_event(db, match.id, player="Bob", possession=2, index=2)
+
+    response = client.get(
+        f"{BASE}/events/",
+        params={"match_id": str(match.id), "player": "Alice"},
+        headers=superuser_token_headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["count"] == 1
+    assert body["data"][0]["player"] == "Alice"
+
+    response = client.get(
+        f"{BASE}/events/",
+        params={"match_id": str(match.id), "possession": 2},
+        headers=superuser_token_headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["count"] == 1
+    assert body["data"][0]["possession"] == 2
+
+
 def test_read_events_empty_match(
     client: TestClient, superuser_token_headers: dict
 ) -> None:

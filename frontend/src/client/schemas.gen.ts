@@ -299,6 +299,40 @@ export const EventPublicSchema = {
             ],
             title: 'Location Y'
         },
+        end_location_x: {
+            anyOf: [
+                {
+                    type: 'number'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'End Location X'
+        },
+        end_location_y: {
+            anyOf: [
+                {
+                    type: 'number'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'End Location Y'
+        },
+        pass_recipient: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 255
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Pass Recipient'
+        },
         duration: {
             anyOf: [
                 {

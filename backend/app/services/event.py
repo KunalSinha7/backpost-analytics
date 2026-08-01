@@ -11,6 +11,18 @@ from app.utils.statsbomb import StatsBombEventRow
 
 logger = logging.getLogger(__name__)
 
+_END_LOCATION_FIELDS = ("pass_end_location", "shot_end_location", "carry_end_location")
+
+
+def _extract_end_location(
+    event_row: StatsBombEventRow,
+) -> tuple[float | None, float | None]:
+    for field in _END_LOCATION_FIELDS:
+        value = getattr(event_row, field, None)
+        if value:
+            return value[0], value[1]
+    return None, None
+
 
 class EventService:
     def __init__(self, session: Session) -> None:
@@ -26,6 +38,8 @@ class EventService:
         type_name: str | None = None,
         team: str | None = None,
         period: int | None = None,
+        player: str | None = None,
+        possession: int | None = None,
     ) -> tuple[list[Event], int]:
         return self.event_repo.list_by_match(
             match_id,
@@ -34,6 +48,8 @@ class EventService:
             type_name=type_name,
             team=team,
             period=period,
+            player=player,
+            possession=possession,
         )
 
     def ingest_for_competition(
@@ -65,6 +81,8 @@ class EventService:
                 if event_row.id in existing_ids:
                     continue
 
+                end_location_x, end_location_y = _extract_end_location(event_row)
+                pass_recipient = getattr(event_row, "pass_recipient", None)
                 event = Event(
                     statsbomb_id=event_row.id,
                     match_id=match.id,
@@ -81,6 +99,9 @@ class EventService:
                     player=event_row.player,
                     location_x=event_row.location[0] if event_row.location else None,
                     location_y=event_row.location[1] if event_row.location else None,
+                    end_location_x=end_location_x,
+                    end_location_y=end_location_y,
+                    pass_recipient=pass_recipient,
                     duration=event_row.duration,
                     under_pressure=event_row.under_pressure,
                     off_camera=event_row.off_camera,

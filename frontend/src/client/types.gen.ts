@@ -47,6 +47,9 @@ export type EventPublic = {
     player?: (string | null);
     location_x?: (number | null);
     location_y?: (number | null);
+    end_location_x?: (number | null);
+    end_location_y?: (number | null);
+    pass_recipient?: (string | null);
     duration?: (number | null);
     under_pressure?: (boolean | null);
     off_camera?: (boolean | null);
@@ -289,6 +292,8 @@ export type ReadEventsData = {
     limit?: number;
     matchId: string;
     period?: (number | null);
+    player?: (string | null);
+    possession?: (number | null);
     skip?: number;
     team?: (string | null);
     typeName?: (string | null);

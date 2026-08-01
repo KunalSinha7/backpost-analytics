@@ -25,6 +25,8 @@ def read_events(
     type_name: str | None = None,
     team: str | None = None,
     period: int | None = None,
+    player: str | None = None,
+    possession: int | None = None,
 ) -> Any:
     events, count = EventService(session).list_by_match(
         match_id,
@@ -33,6 +35,8 @@ def read_events(
         type_name=type_name,
         team=team,
         period=period,
+        player=player,
+        possession=possession,
     )
     return EventsPublic(
         data=[EventPublic.model_validate(e) for e in events],

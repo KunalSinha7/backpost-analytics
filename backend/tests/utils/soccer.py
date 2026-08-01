@@ -55,6 +55,10 @@ def create_event(db: Session, match_id: uuid.UUID, **kwargs: object) -> Event:
         second=kwargs.get("second", 0),
         type_name=kwargs.get("type_name", "Kick Off"),
         team=kwargs.get("team", "Home FC"),
+        player=kwargs.get("player"),
+        possession=kwargs.get("possession"),
+        end_location_x=kwargs.get("end_location_x"),
+        end_location_y=kwargs.get("end_location_y"),
         raw_event={},
     )
     db.add(event)
