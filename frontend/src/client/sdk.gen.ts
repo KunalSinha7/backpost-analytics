@@ -205,6 +205,8 @@ export class SoccerService {
      * @param data.typeName
      * @param data.team
      * @param data.period
+     * @param data.player
+     * @param data.possession
      * @returns EventsPublic Successful Response
      * @throws ApiError
      */
@@ -218,7 +220,9 @@ export class SoccerService {
                 limit: data.limit,
                 type_name: data.typeName,
                 team: data.team,
-                period: data.period
+                period: data.period,
+                player: data.player,
+                possession: data.possession
             },
             errors: {
                 422: 'Validation Error'

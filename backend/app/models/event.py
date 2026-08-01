@@ -20,6 +20,9 @@ class EventBase(SQLModel):
     player: str | None = Field(default=None, max_length=255)
     location_x: float | None = None
     location_y: float | None = None
+    end_location_x: float | None = None
+    end_location_y: float | None = None
+    pass_recipient: str | None = Field(default=None, max_length=255)
     duration: float | None = None
     under_pressure: bool | None = None
     off_camera: bool | None = None

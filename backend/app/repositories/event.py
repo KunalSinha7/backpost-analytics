@@ -17,6 +17,8 @@ class EventRepository:
         type_name: str | None = None,
         team: str | None = None,
         period: int | None = None,
+        player: str | None = None,
+        possession: int | None = None,
     ) -> tuple[list[Event], int]:
         count_stmt = (
             select(func.count()).select_from(Event).where(Event.match_id == match_id)
@@ -31,6 +33,12 @@ class EventRepository:
         if period is not None:
             count_stmt = count_stmt.where(Event.period == period)
             stmt = stmt.where(Event.period == period)
+        if player is not None:
+            count_stmt = count_stmt.where(Event.player == player)
+            stmt = stmt.where(Event.player == player)
+        if possession is not None:
+            count_stmt = count_stmt.where(Event.possession == possession)
+            stmt = stmt.where(Event.possession == possession)
         count = self.session.exec(count_stmt).one()
         events = self.session.exec(
             stmt.order_by(col(Event.index)).offset(skip).limit(limit)

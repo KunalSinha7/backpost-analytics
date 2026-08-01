@@ -1,5 +1,6 @@
 import { Link as RouterLink, useRouterState } from "@tanstack/react-router"
 import {
+  Activity,
   Calendar,
   Download,
   Home,
@@ -37,6 +38,7 @@ const soccerItems: NavItem[] = [
   { icon: UserRound, title: "Players", path: "/soccer/players" },
   { icon: Zap, title: "Events", path: "/soccer/events" },
   { icon: ListOrdered, title: "Lineups", path: "/soccer/lineups" },
+  { icon: Activity, title: "Visualize", path: "/soccer/visualize" },
 ]
 
 const ingestItem: NavItem = {

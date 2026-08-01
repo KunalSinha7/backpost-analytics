@@ -19,6 +19,7 @@ import { Route as LayoutSoccerRouteImport } from './routes/_layout/soccer'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
 import { Route as LayoutSoccerIndexRouteImport } from './routes/_layout/soccer/index'
+import { Route as LayoutSoccerVisualizeRouteImport } from './routes/_layout/soccer/visualize'
 import { Route as LayoutSoccerPlayersRouteImport } from './routes/_layout/soccer/players'
 import { Route as LayoutSoccerMatchesRouteImport } from './routes/_layout/soccer/matches'
 import { Route as LayoutSoccerLineupsRouteImport } from './routes/_layout/soccer/lineups'
@@ -74,6 +75,11 @@ const LayoutSoccerIndexRoute = LayoutSoccerIndexRouteImport.update({
   path: '/',
   getParentRoute: () => LayoutSoccerRoute,
 } as any)
+const LayoutSoccerVisualizeRoute = LayoutSoccerVisualizeRouteImport.update({
+  id: '/visualize',
+  path: '/visualize',
+  getParentRoute: () => LayoutSoccerRoute,
+} as any)
 const LayoutSoccerPlayersRoute = LayoutSoccerPlayersRouteImport.update({
   id: '/players',
   path: '/players',
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/soccer/lineups': typeof LayoutSoccerLineupsRoute
   '/soccer/matches': typeof LayoutSoccerMatchesRoute
   '/soccer/players': typeof LayoutSoccerPlayersRoute
+  '/soccer/visualize': typeof LayoutSoccerVisualizeRoute
   '/soccer/': typeof LayoutSoccerIndexRoute
 }
 export interface FileRoutesByTo {
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/soccer/lineups': typeof LayoutSoccerLineupsRoute
   '/soccer/matches': typeof LayoutSoccerMatchesRoute
   '/soccer/players': typeof LayoutSoccerPlayersRoute
+  '/soccer/visualize': typeof LayoutSoccerVisualizeRoute
   '/soccer': typeof LayoutSoccerIndexRoute
 }
 export interface FileRoutesById {
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/_layout/soccer/lineups': typeof LayoutSoccerLineupsRoute
   '/_layout/soccer/matches': typeof LayoutSoccerMatchesRoute
   '/_layout/soccer/players': typeof LayoutSoccerPlayersRoute
+  '/_layout/soccer/visualize': typeof LayoutSoccerVisualizeRoute
   '/_layout/soccer/': typeof LayoutSoccerIndexRoute
 }
 export interface FileRouteTypes {
@@ -165,6 +174,7 @@ export interface FileRouteTypes {
     | '/soccer/lineups'
     | '/soccer/matches'
     | '/soccer/players'
+    | '/soccer/visualize'
     | '/soccer/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -180,6 +190,7 @@ export interface FileRouteTypes {
     | '/soccer/lineups'
     | '/soccer/matches'
     | '/soccer/players'
+    | '/soccer/visualize'
     | '/soccer'
   id:
     | '__root__'
@@ -197,6 +208,7 @@ export interface FileRouteTypes {
     | '/_layout/soccer/lineups'
     | '/_layout/soccer/matches'
     | '/_layout/soccer/players'
+    | '/_layout/soccer/visualize'
     | '/_layout/soccer/'
   fileRoutesById: FileRoutesById
 }
@@ -280,6 +292,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSoccerIndexRouteImport
       parentRoute: typeof LayoutSoccerRoute
     }
+    '/_layout/soccer/visualize': {
+      id: '/_layout/soccer/visualize'
+      path: '/visualize'
+      fullPath: '/soccer/visualize'
+      preLoaderRoute: typeof LayoutSoccerVisualizeRouteImport
+      parentRoute: typeof LayoutSoccerRoute
+    }
     '/_layout/soccer/players': {
       id: '/_layout/soccer/players'
       path: '/players'
@@ -324,6 +343,7 @@ interface LayoutSoccerRouteChildren {
   LayoutSoccerLineupsRoute: typeof LayoutSoccerLineupsRoute
   LayoutSoccerMatchesRoute: typeof LayoutSoccerMatchesRoute
   LayoutSoccerPlayersRoute: typeof LayoutSoccerPlayersRoute
+  LayoutSoccerVisualizeRoute: typeof LayoutSoccerVisualizeRoute
   LayoutSoccerIndexRoute: typeof LayoutSoccerIndexRoute
 }
 
@@ -333,6 +353,7 @@ const LayoutSoccerRouteChildren: LayoutSoccerRouteChildren = {
   LayoutSoccerLineupsRoute: LayoutSoccerLineupsRoute,
   LayoutSoccerMatchesRoute: LayoutSoccerMatchesRoute,
   LayoutSoccerPlayersRoute: LayoutSoccerPlayersRoute,
+  LayoutSoccerVisualizeRoute: LayoutSoccerVisualizeRoute,
   LayoutSoccerIndexRoute: LayoutSoccerIndexRoute,
 }
 

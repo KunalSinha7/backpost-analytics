@@ -87,33 +87,13 @@ export function MatchTable({ initialCompetitionId }: MatchTableProps) {
     {
       id: "fixture",
       header: "Fixture",
-      cell: ({ row }) => {
-        const hasEvents = row.original.has_events ?? false
-        const label = (
-          <>
-            {row.original.home_team}{" "}
-            <span className="text-muted-foreground font-normal">vs</span>{" "}
-            {row.original.away_team}
-          </>
-        )
-        if (!hasEvents) {
-          return <span className="font-medium">{label}</span>
-        }
-        return (
-          <button
-            type="button"
-            onClick={() =>
-              navigate({
-                to: "/soccer/events",
-                search: { matchId: row.original.id },
-              })
-            }
-            className="font-medium text-left hover:underline hover:text-primary cursor-pointer"
-          >
-            {label}
-          </button>
-        )
-      },
+      cell: ({ row }) => (
+        <span className="font-medium">
+          {row.original.home_team}{" "}
+          <span className="text-muted-foreground font-normal">vs</span>{" "}
+          {row.original.away_team}
+        </span>
+      ),
     },
     {
       id: "score",
@@ -199,6 +179,13 @@ export function MatchTable({ initialCompetitionId }: MatchTableProps) {
       <DataTable
         columns={columns}
         data={data.data}
+        onRowClick={(match) => {
+          if (!match.has_events) return
+          navigate({
+            to: "/soccer/visualize",
+            search: { matchId: match.id, possession: undefined },
+          })
+        }}
         serverPagination={{
           totalCount: data.count,
           page,

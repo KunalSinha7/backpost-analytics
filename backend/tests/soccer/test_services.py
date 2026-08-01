@@ -2,9 +2,10 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.exceptions.event import StatsBombFetchError
+from app.models.event import Event
 from app.services.competition import CompetitionService
 from app.services.event import EventService
 from app.services.frame360 import Frame360Service
@@ -209,6 +210,53 @@ def test_event_service_ingest_idempotent(db: Session) -> None:
         n2 = EventService(db).ingest_for_competition(6008, 6008)
     assert n1 == 1
     assert n2 == 0
+
+
+# IDs 6014-6016 / matches 60011-60013 reserved for end_location backfill tests
+
+
+def _get_event(db: Session, statsbomb_id: str) -> Event:
+    return db.exec(select(Event).where(Event.statsbomb_id == statsbomb_id)).one()
+
+
+def test_event_service_ingest_populates_end_location_from_pass(db: Session) -> None:
+    comp = create_competition(db, statsbomb_id=6014, season_id=6014)
+    create_match(db, comp.id, statsbomb_id=60011)
+    events_df = _events_df("evt-svc-6014-001")
+    events_df.at[0, "type"] = {"name": "Pass"}
+    events_df["pass_end_location"] = [[49.4, 40.6]]
+    with patch("statsbombpy.sb.events", return_value=events_df):
+        EventService(db).ingest_for_competition(6014, 6014)
+
+    ev = _get_event(db, "evt-svc-6014-001")
+    assert ev.end_location_x == 49.4
+    assert ev.end_location_y == 40.6
+
+
+def test_event_service_ingest_populates_end_location_from_shot(db: Session) -> None:
+    comp = create_competition(db, statsbomb_id=6015, season_id=6015)
+    create_match(db, comp.id, statsbomb_id=60012)
+    events_df = _events_df("evt-svc-6015-001")
+    events_df.at[0, "type"] = {"name": "Shot"}
+    events_df["shot_end_location"] = [[120.0, 33.5, 0.4]]
+    with patch("statsbombpy.sb.events", return_value=events_df):
+        EventService(db).ingest_for_competition(6015, 6015)
+
+    ev = _get_event(db, "evt-svc-6015-001")
+    assert ev.end_location_x == 120.0
+    assert ev.end_location_y == 33.5
+
+
+def test_event_service_ingest_no_end_location_for_other_types(db: Session) -> None:
+    comp = create_competition(db, statsbomb_id=6016, season_id=6016)
+    create_match(db, comp.id, statsbomb_id=60013)
+    events_df = _events_df("evt-svc-6016-001")
+    with patch("statsbombpy.sb.events", return_value=events_df):
+        EventService(db).ingest_for_competition(6016, 6016)
+
+    ev = _get_event(db, "evt-svc-6016-001")
+    assert ev.end_location_x is None
+    assert ev.end_location_y is None
 
 
 # ── LineupService ──────────────────────────────────────────────────────────

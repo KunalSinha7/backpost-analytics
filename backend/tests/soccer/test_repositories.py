@@ -142,6 +142,30 @@ def test_event_get_existing_statsbomb_ids(db: Session) -> None:
     assert ev.statsbomb_id in ids
 
 
+def test_event_list_by_match_filter_by_player(db: Session) -> None:
+    comp = create_competition(db, statsbomb_id=3003, season_id=3003)
+    match = create_match(db, comp.id, statsbomb_id=30003)
+    ev = create_event(db, match.id, player="Alice")
+    create_event(db, match.id, player="Bob")
+
+    repo = EventRepository(db)
+    events, count = repo.list_by_match(match.id, player="Alice")
+    assert count == 1
+    assert events[0].id == ev.id
+
+
+def test_event_list_by_match_filter_by_possession(db: Session) -> None:
+    comp = create_competition(db, statsbomb_id=3004, season_id=3004)
+    match = create_match(db, comp.id, statsbomb_id=30004)
+    ev = create_event(db, match.id, possession=1)
+    create_event(db, match.id, possession=2)
+
+    repo = EventRepository(db)
+    events, count = repo.list_by_match(match.id, possession=1)
+    assert count == 1
+    assert events[0].id == ev.id
+
+
 # ── LineupRepository ───────────────────────────────────────────────────────
 
 
