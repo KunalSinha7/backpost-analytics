@@ -212,7 +212,7 @@ def test_event_service_ingest_idempotent(db: Session) -> None:
     assert n2 == 0
 
 
-# IDs 6014-6016 / matches 60011-60013 reserved for end_location backfill tests
+# IDs 6014-6018 / matches 60011-60015 reserved for end_location/pass_recipient backfill tests
 
 
 def _get_event(db: Session, statsbomb_id: str) -> Event:
@@ -257,6 +257,30 @@ def test_event_service_ingest_no_end_location_for_other_types(db: Session) -> No
     ev = _get_event(db, "evt-svc-6016-001")
     assert ev.end_location_x is None
     assert ev.end_location_y is None
+
+
+def test_event_service_ingest_populates_pass_recipient(db: Session) -> None:
+    comp = create_competition(db, statsbomb_id=6017, season_id=6017)
+    create_match(db, comp.id, statsbomb_id=60014)
+    events_df = _events_df("evt-svc-6017-001")
+    events_df.at[0, "type"] = {"name": "Pass"}
+    events_df["pass_recipient"] = ["Alice"]
+    with patch("statsbombpy.sb.events", return_value=events_df):
+        EventService(db).ingest_for_competition(6017, 6017)
+
+    ev = _get_event(db, "evt-svc-6017-001")
+    assert ev.pass_recipient == "Alice"
+
+
+def test_event_service_ingest_no_pass_recipient_for_other_types(db: Session) -> None:
+    comp = create_competition(db, statsbomb_id=6018, season_id=6018)
+    create_match(db, comp.id, statsbomb_id=60015)
+    events_df = _events_df("evt-svc-6018-001")
+    with patch("statsbombpy.sb.events", return_value=events_df):
+        EventService(db).ingest_for_competition(6018, 6018)
+
+    ev = _get_event(db, "evt-svc-6018-001")
+    assert ev.pass_recipient is None
 
 
 # ── LineupService ──────────────────────────────────────────────────────────

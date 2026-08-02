@@ -29,8 +29,8 @@ function markerIdForTeam(team: string): string {
 // team's own second-half events (after they've switched ends) aren't
 // re-flipped, since that needs tracking which goal each team attacked each
 // period, not just team identity.
-function mirrorPoint(x: number, y: number): [number, number] {
-  return [PITCH_LENGTH - x, PITCH_WIDTH - y]
+function resolvePoint(x: number, y: number, mirror: boolean): [number, number] {
+  return mirror ? [PITCH_LENGTH - x, PITCH_WIDTH - y] : [x, y]
 }
 
 function hasEndLocation(
@@ -70,24 +70,18 @@ interface EventMarkerProps {
 function EventMarker({ event, color, mirror }: EventMarkerProps) {
   if (event.location_x == null || event.location_y == null) return null
 
-  const [x, y] = mirror
-    ? mirrorPoint(event.location_x, event.location_y)
-    : [event.location_x, event.location_y]
+  const [x, y] = resolvePoint(event.location_x, event.location_y, mirror)
 
   const radius = radiusForType(event.type_name)
   const isShot = event.type_name === "Shot"
   const isPass = event.type_name === "Pass"
   const rawEndLocation = hasEndLocation(event) ? event : null
   const endPoint = rawEndLocation
-    ? mirror
-      ? mirrorPoint(
-          rawEndLocation.end_location_x,
-          rawEndLocation.end_location_y,
-        )
-      : ([
-          rawEndLocation.end_location_x,
-          rawEndLocation.end_location_y,
-        ] as const)
+    ? resolvePoint(
+        rawEndLocation.end_location_x,
+        rawEndLocation.end_location_y,
+        mirror,
+      )
     : null
   const receiverPoint = isPass && event.pass_recipient ? endPoint : null
 
