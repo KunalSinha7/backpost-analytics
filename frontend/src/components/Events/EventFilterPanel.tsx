@@ -89,14 +89,6 @@ export function EventFilterPanel({
     () => [...new Set(allEvents.data.map((e) => e.team))].sort(),
     [allEvents.data],
   )
-
-  // Reported up so team colors/mirroring can be keyed off the match's full
-  // roster instead of whichever teams survive the current filter — without
-  // this, isolating one team (or filtering to a subset with no events for
-  // the other) reshuffles that team's color and mirrored attacking side.
-  useEffect(() => {
-    onTeamsChange?.(teams)
-  }, [teams, onTeamsChange])
   const players = useMemo(
     () =>
       [
@@ -117,6 +109,14 @@ export function EventFilterPanel({
     }
     return [...map.entries()].sort((a, b) => a[0] - b[0])
   }, [allEvents.data])
+
+  // Reported up so team colors/mirroring can be keyed off the match's full
+  // roster instead of whichever teams survive the current filter — without
+  // this, isolating one team (or filtering to a subset with no events for
+  // the other) reshuffles that team's color and mirrored attacking side.
+  useEffect(() => {
+    onTeamsChange?.(teams)
+  }, [teams, onTeamsChange])
 
   const [minIndex, maxIndex] = useMemo(() => {
     if (allEvents.data.length === 0) return [0, 0]
