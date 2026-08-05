@@ -12,6 +12,11 @@ class MatchRepository:
     def __init__(self, session: Session) -> None:
         self.session = session
 
+    def _events_exist_clause(self) -> Any:
+        from app.models.event import Event
+
+        return select(Event.id).where(col(Event.match_id) == SoccerMatch.id).exists()
+
     def list_all(
         self,
         skip: int = 0,
@@ -38,11 +43,7 @@ class MatchRepository:
                 stmt = stmt.where(team_filter)
                 count_stmt = count_stmt.where(team_filter)
         if has_events:
-            from app.models.event import Event
-
-            events_exist = (
-                select(Event.id).where(Event.match_id == SoccerMatch.id).exists()
-            )
+            events_exist = self._events_exist_clause()
             stmt = stmt.where(events_exist)
             count_stmt = count_stmt.where(events_exist)
         count = self.session.exec(count_stmt).one()
@@ -76,14 +77,7 @@ class MatchRepository:
             if competition_id is not None:
                 stmt = stmt.where(col(SoccerMatch.competition_id) == competition_id)
             if has_events:
-                from app.models.event import Event
-
-                events_exist = (
-                    select(Event.id)
-                    .where(col(Event.match_id) == SoccerMatch.id)
-                    .exists()
-                )
-                stmt = stmt.where(events_exist)
+                stmt = stmt.where(self._events_exist_clause())
             return stmt
 
         combined = union(

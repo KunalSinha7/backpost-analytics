@@ -34,23 +34,7 @@ function EventsPage() {
         competitionId={competitionId}
         teamName={teamName}
         matchId={matchId}
-        onCompetitionChange={(id) =>
-          navigate({
-            search: {
-              competitionId: id,
-              teamName: undefined,
-              matchId: undefined,
-            },
-          })
-        }
-        onTeamChange={(team) =>
-          navigate({
-            search: { competitionId, teamName: team, matchId: undefined },
-          })
-        }
-        onMatchChange={(id) =>
-          navigate({ search: { competitionId, teamName, matchId: id } })
-        }
+        onChange={(next) => navigate({ search: next })}
       />
       {matchId && (
         <Suspense fallback={<PendingTable />}>

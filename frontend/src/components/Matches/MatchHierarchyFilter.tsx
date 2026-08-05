@@ -11,22 +11,24 @@ import {
 
 const ALL = "all"
 
-interface MatchHierarchyFilterProps {
-  competitionId?: string
-  teamName?: string
-  matchId?: string
-  onCompetitionChange: (competitionId: string | undefined) => void
-  onTeamChange: (teamName: string | undefined) => void
-  onMatchChange: (matchId: string) => void
+export interface MatchHierarchySelection {
+  competitionId: string | undefined
+  teamName: string | undefined
+  matchId: string | undefined
+}
+
+interface MatchHierarchyFilterProps extends MatchHierarchySelection {
+  // Consumers only need to say where the search params should land (e.g.
+  // navigate); the cascade rule below — narrowing a higher level clears the
+  // levels beneath it — is owned here so it isn't reimplemented per page.
+  onChange: (next: MatchHierarchySelection) => void
 }
 
 export function MatchHierarchyFilter({
   competitionId,
   teamName,
   matchId,
-  onCompetitionChange,
-  onTeamChange,
-  onMatchChange,
+  onChange,
 }: MatchHierarchyFilterProps) {
   // keepPreviousData on every level here — without it, narrowing the
   // competition/team dropdown would blank the row while its query refetches,
@@ -65,14 +67,23 @@ export function MatchHierarchyFilter({
   const matches = matchesData?.data ?? []
 
   const handleCompetitionChange = (value: string) => {
-    // Resetting the team here (instead of a separate onTeamChange call) matters:
-    // two independent navigate() calls in the same tick would each close over
-    // the pre-update search state, so the second call clobbers the first.
-    onCompetitionChange(value === ALL ? undefined : value)
+    onChange({
+      competitionId: value === ALL ? undefined : value,
+      teamName: undefined,
+      matchId: undefined,
+    })
   }
 
   const handleTeamChange = (value: string) => {
-    onTeamChange(value === ALL ? undefined : value)
+    onChange({
+      competitionId,
+      teamName: value === ALL ? undefined : value,
+      matchId: undefined,
+    })
+  }
+
+  const handleMatchChange = (value: string) => {
+    onChange({ competitionId, teamName, matchId: value })
   }
 
   return (
@@ -113,7 +124,7 @@ export function MatchHierarchyFilter({
           No matches with events match these filters.
         </p>
       ) : (
-        <Select value={matchId ?? ""} onValueChange={onMatchChange}>
+        <Select value={matchId ?? ""} onValueChange={handleMatchChange}>
           <SelectTrigger className="w-full max-w-md">
             <SelectValue placeholder="Select a match…" />
           </SelectTrigger>

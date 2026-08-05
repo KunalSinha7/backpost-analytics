@@ -68,35 +68,8 @@ function VisualizePage() {
         competitionId={competitionId}
         teamName={teamName}
         matchId={matchId}
-        onCompetitionChange={(id) =>
-          navigate({
-            search: {
-              competitionId: id,
-              teamName: undefined,
-              matchId: undefined,
-              possession: undefined,
-            },
-          })
-        }
-        onTeamChange={(team) =>
-          navigate({
-            search: {
-              competitionId,
-              teamName: team,
-              matchId: undefined,
-              possession: undefined,
-            },
-          })
-        }
-        onMatchChange={(id) =>
-          navigate({
-            search: {
-              competitionId,
-              teamName,
-              matchId: id,
-              possession: undefined,
-            },
-          })
+        onChange={(next) =>
+          navigate({ search: { ...next, possession: undefined } })
         }
       />
       {matchId && (
