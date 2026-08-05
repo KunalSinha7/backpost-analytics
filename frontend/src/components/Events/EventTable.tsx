@@ -241,6 +241,8 @@ export function EventTable({ matchId }: EventTableProps) {
           navigate({
             to: "/soccer/visualize",
             search: {
+              competitionId: undefined,
+              teamName: undefined,
               matchId,
               possession: event.possession ?? undefined,
             },

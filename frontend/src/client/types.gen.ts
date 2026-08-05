@@ -164,6 +164,10 @@ export type SoccerMatchPublic = {
     has_events?: boolean;
 };
 
+export type SoccerTeamsPublic = {
+    data: Array<(string)>;
+};
+
 export type StatsBombCompetition = {
     competition_id: number;
     competition_name: string;
@@ -287,6 +291,13 @@ export type ReadMatchesData = {
 };
 
 export type ReadMatchesResponse = (SoccerMatchesPublic);
+
+export type ReadMatchTeamsData = {
+    competitionId?: (string | null);
+    hasEvents?: boolean;
+};
+
+export type ReadMatchTeamsResponse = (SoccerTeamsPublic);
 
 export type ReadEventsData = {
     limit?: number;

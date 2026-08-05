@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, ReadCompetitionsData, ReadCompetitionsResponse, IngestSoccerDataResponse, GetAvailableCompetitionsResponse, ReadMatchesData, ReadMatchesResponse, ReadEventsData, ReadEventsResponse, IngestEventsData, IngestEventsResponse, ReadLineupsData, ReadLineupsResponse, ReadFramesData, ReadFramesResponse, ReadPlayersData, ReadPlayersResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+import type { LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, ReadCompetitionsData, ReadCompetitionsResponse, IngestSoccerDataResponse, GetAvailableCompetitionsResponse, ReadMatchesData, ReadMatchesResponse, ReadMatchTeamsData, ReadMatchTeamsResponse, ReadEventsData, ReadEventsResponse, IngestEventsData, IngestEventsResponse, ReadLineupsData, ReadLineupsResponse, ReadFramesData, ReadFramesResponse, ReadPlayersData, ReadPlayersResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
 
 export class LoginService {
     /**
@@ -189,6 +189,28 @@ export class SoccerService {
                 competition_id: data.competitionId,
                 has_events: data.hasEvents,
                 team_name: data.teamName
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Read Match Teams
+     * @param data The data for the request.
+     * @param data.competitionId
+     * @param data.hasEvents
+     * @returns SoccerTeamsPublic Successful Response
+     * @throws ApiError
+     */
+    public static readMatchTeams(data: ReadMatchTeamsData = {}): CancelablePromise<ReadMatchTeamsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/soccer/matches/teams',
+            query: {
+                competition_id: data.competitionId,
+                has_events: data.hasEvents
             },
             errors: {
                 422: 'Validation Error'

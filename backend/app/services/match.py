@@ -31,6 +31,15 @@ class MatchService:
             team_name=team_name,
         )
 
+    def list_teams(
+        self,
+        competition_id: uuid.UUID | None = None,
+        has_events: bool = False,
+    ) -> list[str]:
+        return self.repo.list_distinct_teams(
+            competition_id=competition_id, has_events=has_events
+        )
+
     def ingest(self, competitions: list[Competition]) -> int:
         from statsbombpy import sb  # type: ignore[import-untyped]
 

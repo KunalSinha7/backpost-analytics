@@ -972,6 +972,21 @@ export const SoccerMatchesPublicSchema = {
     title: 'SoccerMatchesPublic'
 } as const;
 
+export const SoccerTeamsPublicSchema = {
+    properties: {
+        data: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Data'
+        }
+    },
+    type: 'object',
+    required: ['data'],
+    title: 'SoccerTeamsPublic'
+} as const;
+
 export const StatsBombCompetitionSchema = {
     properties: {
         competition_id: {

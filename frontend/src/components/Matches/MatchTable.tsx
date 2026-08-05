@@ -183,7 +183,12 @@ export function MatchTable({ initialCompetitionId }: MatchTableProps) {
           if (!match.has_events) return
           navigate({
             to: "/soccer/visualize",
-            search: { matchId: match.id, possession: undefined },
+            search: {
+              competitionId: match.competition_id,
+              teamName: undefined,
+              matchId: match.id,
+              possession: undefined,
+            },
           })
         }}
         serverPagination={{

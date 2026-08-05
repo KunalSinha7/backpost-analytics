@@ -1,6 +1,8 @@
 import uuid
+from typing import Any
 
-from sqlalchemy import and_
+from sqlalchemy import Select, and_, union
+from sqlalchemy.orm import Mapped
 from sqlmodel import Session, col, func, or_, select
 
 from app.models.match import SoccerMatch
@@ -63,6 +65,35 @@ class MatchRepository:
             has_events_ids = set()
 
         return list(rows), count, has_events_ids
+
+    def list_distinct_teams(
+        self,
+        competition_id: uuid.UUID | None = None,
+        has_events: bool = False,
+    ) -> list[str]:
+        def _team_select(team_col: Mapped[str]) -> Select[Any]:
+            stmt: Select[Any] = select(team_col.label("team"))
+            if competition_id is not None:
+                stmt = stmt.where(col(SoccerMatch.competition_id) == competition_id)
+            if has_events:
+                from app.models.event import Event
+
+                events_exist = (
+                    select(Event.id)
+                    .where(col(Event.match_id) == SoccerMatch.id)
+                    .exists()
+                )
+                stmt = stmt.where(events_exist)
+            return stmt
+
+        combined = union(
+            _team_select(col(SoccerMatch.home_team)),
+            _team_select(col(SoccerMatch.away_team)),
+        ).subquery()
+        rows = self.session.exec(
+            select(combined.c.team).order_by(combined.c.team)
+        ).all()
+        return list(rows)
 
     def get_existing_statsbomb_ids(self) -> set[int]:
         return {m.statsbomb_id for m in self.session.exec(select(SoccerMatch)).all()}

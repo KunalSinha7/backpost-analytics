@@ -2,11 +2,16 @@ import { createFileRoute } from "@tanstack/react-router"
 import { Suspense } from "react"
 
 import { EventTable } from "@/components/Events/EventTable"
-import { MatchSelector } from "@/components/Matches/MatchSelector"
+import { MatchHierarchyFilter } from "@/components/Matches/MatchHierarchyFilter"
 import PendingTable from "@/components/Pending/PendingTable"
 
 export const Route = createFileRoute("/_layout/soccer/events")({
   validateSearch: (search: Record<string, unknown>) => ({
+    competitionId:
+      typeof search.competitionId === "string"
+        ? search.competitionId
+        : undefined,
+    teamName: typeof search.teamName === "string" ? search.teamName : undefined,
     matchId: typeof search.matchId === "string" ? search.matchId : undefined,
   }),
   component: EventsPage,
@@ -14,12 +19,8 @@ export const Route = createFileRoute("/_layout/soccer/events")({
 })
 
 function EventsPage() {
-  const { matchId } = Route.useSearch()
+  const { competitionId, teamName, matchId } = Route.useSearch()
   const navigate = Route.useNavigate()
-
-  const handleMatchSelect = (id: string) => {
-    navigate({ search: { matchId: id } })
-  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -29,9 +30,28 @@ function EventsPage() {
           Match events — passes, shots, and more
         </p>
       </div>
-      <Suspense fallback={<PendingTable />}>
-        <MatchSelector onSelect={handleMatchSelect} defaultMatchId={matchId} />
-      </Suspense>
+      <MatchHierarchyFilter
+        competitionId={competitionId}
+        teamName={teamName}
+        matchId={matchId}
+        onCompetitionChange={(id) =>
+          navigate({
+            search: {
+              competitionId: id,
+              teamName: undefined,
+              matchId: undefined,
+            },
+          })
+        }
+        onTeamChange={(team) =>
+          navigate({
+            search: { competitionId, teamName: team, matchId: undefined },
+          })
+        }
+        onMatchChange={(id) =>
+          navigate({ search: { competitionId, teamName, matchId: id } })
+        }
+      />
       {matchId && (
         <Suspense fallback={<PendingTable />}>
           <EventTable matchId={matchId} />
