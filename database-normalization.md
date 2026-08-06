@@ -124,7 +124,7 @@ Fold `ALTER TABLE event ALTER COLUMN raw_event TYPE jsonb` into the same migrati
 
 ### 1.6 Other fields discarded at the parser
 
-Beyond the entity ids in §1.5, a full enumeration of `raw_event` keys and the `sb.lineups()` payload found substantial data dropped at parse time. Folded into this plan (decided 2026-08-06):
+Beyond the entity ids in §1.5, a full enumeration of `raw_event` keys and the `sb.lineups()` payload found substantial data dropped at parse time. **In scope for this plan** (decided 2026-08-06, §6/S1):
 
 | Field | Coverage | Why it's in scope |
 |---|---|---|
@@ -132,6 +132,7 @@ Beyond the entity ids in §1.5, a full enumeration of `raw_event` keys and the `
 | `lineup.positions[]` | every lineup row | Carries `position_id`, `from`/`to`, `from_period`/`to_period`, `start_reason`, `end_reason` per stint. **This is minutes played.** Current parser reads only `positions[0].start_reason` for `started` and discards the rest. |
 | `lineup.cards[]` | every lineup row | Yellows/reds per player per match. Discarded entirely. |
 | `substitution_replacement_id` | 770 events | An unplanned **player FK**. With `positions[].from/to`, completes minutes-played. |
+
 Split into their own issues, out of scope here (see §6/S1 for the rule that decided this):
 
 | Issue | Scope |
@@ -402,7 +403,7 @@ Ordered so the capability you actually asked for (§1.3, season stats) lands ear
 
 | Phase | Delivers | Risk | Key gate |
 |---|---|---|---|
-| **0. Foundations** | `data_source` table. **`extra="allow"` on `_StatsBombRow` + `raw` columns on `lineup`/`soccer_match`/`competition`** (§1.5). **Re-fetch `sb.lineups()` for the 94 event-matches** — the only network-bound step in the plan. **`ix_event_match_id_index`** (§6/H2). **Fix `model_validate` relationship loss** (§6/B2). `app/ingest/` package + `SourceProvider` Protocol; arch rule. **No entity changes.** | Low | Re-ingest into empty DB matches current row counts; arch test **written red first**; `/competitions` p95 improves |
+| **0. Foundations** | **Golden-response + `openapi.json` snapshot harness** (§7.1 — must land while the baseline is still trivially correct). `data_source` table. **`extra="allow"` on `_StatsBombRow` + `raw` columns on `lineup`/`soccer_match`/`competition`** (§1.5). **Re-fetch `sb.lineups()` for the 94 event-matches** — the only network-bound step in the plan. **`ix_event_match_id_index`** (§6/H2). **Fix `model_validate` relationship loss** (§6/B2). `app/ingest/` package + `SourceProvider` Protocol; arch rule. **No entity changes.** | Low | Snapshots captured and committed; re-ingest into empty DB matches current row counts; arch test **written red first**; `model_validate` fix has a **failing test first**; `alembic downgrade` rehearsed; `/competitions` p95 improves |
 | **1. Identity** | `team` + `player` + `position` entities; **`team_alias`** (§6/M5); `EntityResolver`; FKs on `soccer_match`/`lineup`/`event`; one backfill pass. Additive `home_team_id`/`away_team_id` on `SoccerMatchPublic` + optional `team_id` filter params (§6/H4). **Fixes the Marseille bug.** | Medium — touches 376k rows | Marseille resolves to 1 team; all 1,920 orphaned events join; **`lineup.team_id` NULL count = 0**; distinct team count = 353; responses identical **except the enumerated drift set = {team 147}** |
 | **2. Competition split** | `competition` / `season` / `competition_season`; `competition_id` → `competition_season_id` rename churn. **In-place `ALTER` only — never DELETE/re-INSERT `competition`** (§6/B3) | Medium — 85 refs across stack | `/competitions` response unchanged; pre-flight FD assertions (§6) pass; `soccer_match` row count unchanged |
 | **3. Season stats** | `lineup_position` (minutes played); indexes from §2.2; `/players/{id}/stats?season_id=` endpoint | Low | **Per-90 for a known player matches a hand-computed value** — not just raw counts |
@@ -453,7 +454,7 @@ This is what put `lineup.positions[]`/`cards[]` in scope (nothing preserves them
 
 - Minor, decide during Phase 3: `lineup.cards[]` as a `lineup_card` table vs a JSON column (§2.2).
 
-**Nothing blocking. Phase 0 is ready to start.**
+**Nothing blocking. Phase 0 is ready to start — see §7 for the verification harness (which must land first) and the parallel-lane breakdown.**
 
 ---
 
@@ -532,3 +533,65 @@ The reviewer's naming verdict ("keep `competition` = edition, do not overrule") 
 
 - Rename StatsBomb-side identifiers: `competition_statsbomb_id` → `league_external_id` in repositories/services (they currently carry StatsBomb's *league* id under a "competition" name, and become outright lies after the split).
 - **Do not name the ingest DTO `SourceCompetition`** — it will be read as the league. Use `SourceEdition`, with an adapter docstring stating the mapping explicitly.
+
+---
+
+## 7. Execution model — verification scaffolding and parallelism
+
+### 7.1 The verification harness must land first
+
+Every phase gate in §4 leans on *"responses identical except the enumerated drift set"* and *"diff `openapi.json` per phase"*. **No such harness exists in the repo** (verified: no snapshot/golden/openapi tooling under `backend/tests/`).
+
+This cannot be retrofitted. Once Phase 1 lands there is no longer a clean baseline to snapshot, so it is a **Phase 0 deliverable, and the first one**:
+
+- Capture golden responses for `/competitions`, `/matches`, `/matches/teams`, `/events`, `/lineups`, `/players` against the seeded dev dataset
+- Capture `/api/v1/openapi.json` — field renames and `required`-list changes do **not** surface in a response-body diff (§6)
+- Commit the snapshots; every later phase diffs against them and must explicitly justify any delta
+
+Two Phase 0 items must also be **written red first**, because both are fixes for assumed-broken behaviour and a green-on-day-one test would prove nothing:
+
+- The statsbombpy arch rule (§6/M2 — all five imports are function-local; confirm pytestarch descends into function bodies)
+- The `model_validate` relationship-loss fix (§6/B2 — accepted from review, not yet reproduced)
+
+Add one `alembic downgrade` rehearsal on Phase 0's own migration, where the stakes are lowest. Existing migrations do have real `downgrade()` bodies (not stubs), but nothing has exercised them.
+
+### 7.2 The hard constraint on parallelism: Alembic serializes all schema work
+
+Verified: the repo has a **single linear head** (`3cfb9503c5b7`), and `env.py` sets no `transaction_per_migration`, so each migration runs in one transaction.
+
+Every generated revision hardcodes `down_revision = '<head at generation time>'`. **Two agents generating migrations concurrently both write the same `down_revision`, producing branched heads that `alembic upgrade head` refuses to run.** This is the single biggest failure mode for a parallel flow on this plan.
+
+> **Rule: exactly one lane owns Alembic revisions at any time.** Other lanes must be migration-free, or hand their schema delta to the migration owner as a written spec rather than generating a revision themselves.
+
+### 7.3 What actually parallelizes
+
+**Phase 0 — genuinely parallel, 3 lanes + 1 serialized:**
+
+| Lane | Scope | Files | Conflicts? |
+|---|---|---|---|
+| **A — Verification** | Golden + openapi harness (§7.1) | `backend/tests/**` only | None |
+| **B — Repository fixes** | `model_validate` relationship loss (red first) | `repositories/competition.py`, `repositories/player.py` | None |
+| **C — Ingest skeleton** | `app/ingest/` package, `SourceProvider` Protocol, arch rule (red first) | new package + `tests/test_architecture.py` | None |
+| **D — Schema (SERIALIZED)** | `data_source`, `raw` columns, `extra="allow"`, `ix_event_match_id_index`, lineups re-fetch | `models/**`, `utils/statsbomb.py`, `alembic/versions/**` | **Owns all migrations** |
+
+Lane D is one worker start-to-finish. A/B/C run concurrently against it. Lane A should finish first — the snapshots are the safety net for everything after.
+
+**Post-Phase-1 — fully parallel, 3 lanes:**
+[#31](https://github.com/KunalSinha7/backpost-analytics/issues/31), [#32](https://github.com/KunalSinha7/backpost-analytics/issues/32), [#33](https://github.com/KunalSinha7/backpost-analytics/issues/33) are independent of each other and of Phases 2–4. All three depend only on the `json` → `jsonb` conversion landing in Phase 1 (§1.5). Each is one PR, one lane, no shared files — the best parallel opportunity in the whole plan.
+
+**Also parallel:** frontend work for the additive `team_id` params (§6/H4) once the API shape is agreed, against backend implementation.
+
+### 7.4 What does NOT parallelize — and shouldn't be forced
+
+**Phases 1 → 2 → 3 → 4 are strictly sequential.** Hard data dependency: `event.team_id` cannot be backfilled before `team` exists; the competition split cannot proceed before identity is stable.
+
+**Within Phases 1–3, splitting is counterproductive.** Each is dominated by one hard thing — the backfill — which needs deep, whole-picture context: the float-cast trap (§1.5/B1), the event-feed lineup rule (§1.6/B0), the cascade hazard (§6/B3), and the canonical-name tie-break (§6/H3). Handing fragments of that to separate cold-start workers reintroduces exactly the class of bug the review caught. **Keep Phases 1–3 single-threaded.**
+
+Honest assessment: the parallelism ceiling on this plan is roughly **3× on Phase 0 and 3× on the deferred issues, and 1× on the critical path**. The critical path is where nearly all the risk lives, and it is inherently serial.
+
+### 7.5 Additions required for a multi-lane flow
+
+1. **Migration ownership** (§7.2) — declare the owning lane before any phase starts.
+2. **Lane scoping is file-scoped, not task-scoped** — see the table in §7.3. Two lanes must never hold the same file.
+3. **Per-phase integration gate** — the §4 gates assume a single worker. With lanes, add an explicit merge point: all lanes green → integrate → *then* run the phase gate against the integrated result, never against a single lane's branch.
+4. **Lane A is a prerequisite, not a peer** — no lane that can change an API response may merge before the snapshot harness exists.
