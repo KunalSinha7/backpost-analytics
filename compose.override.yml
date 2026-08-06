@@ -102,6 +102,17 @@ services:
       args:
         - VITE_API_URL=http://localhost:8000
         - NODE_ENV=development
+    develop:
+      watch:
+        - path: ./frontend
+          action: rebuild
+          ignore:
+            - node_modules
+            - dist
+            - .tanstack
+            - test-results
+            - playwright-report
+            - blob-report
 
   playwright:
     build:
