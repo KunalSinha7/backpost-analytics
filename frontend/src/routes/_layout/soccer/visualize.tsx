@@ -4,7 +4,7 @@ import { Suspense, useMemo, useState } from "react"
 
 import type { EventPublic } from "@/client"
 import { EventFilterPanel } from "@/components/Events/EventFilterPanel"
-import { MatchSelector } from "@/components/Matches/MatchSelector"
+import { MatchHierarchyFilter } from "@/components/Matches/MatchHierarchyFilter"
 import PendingTable from "@/components/Pending/PendingTable"
 import { PitchEventLayer } from "@/components/Pitch/PitchEventLayer"
 import { PitchSvg } from "@/components/Pitch/PitchSvg"
@@ -16,6 +16,11 @@ function parsePossession(value: unknown): number | undefined {
 
 export const Route = createFileRoute("/_layout/soccer/visualize")({
   validateSearch: (search: Record<string, unknown>) => ({
+    competitionId:
+      typeof search.competitionId === "string"
+        ? search.competitionId
+        : undefined,
+    teamName: typeof search.teamName === "string" ? search.teamName : undefined,
     matchId: typeof search.matchId === "string" ? search.matchId : undefined,
     // Set when arriving from an Events table row click, to jump straight to
     // that event's possession chain instead of the default unfiltered view.
@@ -28,7 +33,7 @@ export const Route = createFileRoute("/_layout/soccer/visualize")({
 const TEAM_COLORS = ["#2563eb", "#dc2626", "#16a34a", "#d97706"]
 
 function VisualizePage() {
-  const { matchId, possession } = Route.useSearch()
+  const { competitionId, teamName, matchId, possession } = Route.useSearch()
   const navigate = Route.useNavigate()
   const [filteredEvents, setFilteredEvents] = useState<EventPublic[]>([])
   const [isLoadingEvents, setIsLoadingEvents] = useState(false)
@@ -53,19 +58,20 @@ function VisualizePage() {
     (e) => e.location_x != null && e.location_y != null,
   )
 
-  const handleMatchSelect = (id: string) => {
-    navigate({ search: { matchId: id, possession: undefined } })
-  }
-
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Visualize</h1>
         <p className="text-muted-foreground">Plot match events on the pitch</p>
       </div>
-      <Suspense fallback={<PendingTable />}>
-        <MatchSelector onSelect={handleMatchSelect} defaultMatchId={matchId} />
-      </Suspense>
+      <MatchHierarchyFilter
+        competitionId={competitionId}
+        teamName={teamName}
+        matchId={matchId}
+        onChange={(next) =>
+          navigate({ search: { ...next, possession: undefined } })
+        }
+      />
       {matchId && (
         <Suspense fallback={<PendingTable />}>
           <EventFilterPanel

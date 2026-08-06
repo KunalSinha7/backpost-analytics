@@ -42,6 +42,30 @@ def test_read_competitions_with_data(
     assert "Route Test League" in names
 
 
+def test_read_competitions_filter_by_has_events(
+    client: TestClient, superuser_token_headers: dict, db: Session
+) -> None:
+    comp_with_events = create_competition(
+        db, statsbomb_id=8002, season_id=8002, competition_name="Has Events League"
+    )
+    comp_matches_only = create_competition(
+        db, statsbomb_id=8003, season_id=8003, competition_name="Matches Only League"
+    )
+    match = create_match(db, comp_with_events.id, statsbomb_id=80025)
+    create_match(db, comp_matches_only.id, statsbomb_id=80035)
+    create_event(db, match.id)
+
+    response = client.get(
+        f"{BASE}/competitions/",
+        params={"has_events": True},
+        headers=superuser_token_headers,
+    )
+    assert response.status_code == 200
+    names = [c["competition_name"] for c in response.json()["data"]]
+    assert "Has Events League" in names
+    assert "Matches Only League" not in names
+
+
 def test_ingest_soccer_data(client: TestClient, superuser_token_headers: dict) -> None:
     comps_df = pd.DataFrame(
         [
@@ -136,6 +160,45 @@ def test_read_matches_filter_by_competition(
     body = response.json()
     assert body["count"] >= 1
     assert all(m["competition_id"] == str(comp.id) for m in body["data"])
+
+
+def test_read_match_teams(
+    client: TestClient, superuser_token_headers: dict, db: Session
+) -> None:
+    comp = create_competition(db, statsbomb_id=8012, season_id=8012)
+    create_match(
+        db, comp.id, statsbomb_id=80012, home_team="Route Alpha", away_team="Route Beta"
+    )
+    response = client.get(
+        f"{BASE}/matches/teams",
+        params={"competition_id": str(comp.id)},
+        headers=superuser_token_headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data"] == ["Route Alpha", "Route Beta"]
+
+
+def test_read_match_teams_unscoped_excludes_other_competitions(
+    client: TestClient, superuser_token_headers: dict, db: Session
+) -> None:
+    comp_a = create_competition(db, statsbomb_id=8013, season_id=8013)
+    comp_b = create_competition(db, statsbomb_id=8014, season_id=8014)
+    create_match(
+        db, comp_a.id, statsbomb_id=80013, home_team="Scoped A", away_team="Scoped B"
+    )
+    create_match(
+        db, comp_b.id, statsbomb_id=80014, home_team="Other A", away_team="Other B"
+    )
+    response = client.get(
+        f"{BASE}/matches/teams",
+        params={"competition_id": str(comp_a.id)},
+        headers=superuser_token_headers,
+    )
+    assert response.status_code == 200
+    teams = response.json()["data"]
+    assert "Scoped A" in teams
+    assert "Other A" not in teams
 
 
 # ── Events ────────────────────────────────────────────────────────────────

@@ -27,9 +27,10 @@ def read_competitions(
     skip: int = 0,
     limit: int = 100,
     has_matches: bool = False,
+    has_events: bool = False,
 ) -> Any:
     rows, count = CompetitionService(session).list_competitions(
-        skip=skip, limit=limit, has_matches=has_matches
+        skip=skip, limit=limit, has_matches=has_matches, has_events=has_events
     )
     return CompetitionsPublic(
         data=[

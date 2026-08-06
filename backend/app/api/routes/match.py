@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import APIRouter
 
 from app.api.deps import SessionDep
-from app.models.match import SoccerMatchesPublic, SoccerMatchPublic
+from app.models.match import SoccerMatchesPublic, SoccerMatchPublic, SoccerTeamsPublic
 from app.services.match import MatchService
 
 router = APIRouter(prefix="/matches", tags=["soccer"])
@@ -37,3 +37,15 @@ def read_matches(
         ],
         count=count,
     )
+
+
+@router.get("/teams", response_model=SoccerTeamsPublic, operation_id="readMatchTeams")
+def read_match_teams(
+    session: SessionDep,
+    competition_id: uuid.UUID | None = None,
+    has_events: bool = False,
+) -> Any:
+    teams = MatchService(session).list_teams(
+        competition_id=competition_id, has_events=has_events
+    )
+    return SoccerTeamsPublic(data=teams)

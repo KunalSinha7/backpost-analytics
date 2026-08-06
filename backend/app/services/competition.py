@@ -18,8 +18,11 @@ class CompetitionService:
         skip: int = 0,
         limit: int = 100,
         has_matches: bool = False,
+        has_events: bool = False,
     ) -> tuple[list[tuple[Competition, int]], int]:
-        return self.repo.list_all(skip=skip, limit=limit, has_matches=has_matches)
+        return self.repo.list_all(
+            skip=skip, limit=limit, has_matches=has_matches, has_events=has_events
+        )
 
     def ingest(self) -> tuple[int, list[Competition]]:
         from statsbombpy import sb  # type: ignore[import-untyped]

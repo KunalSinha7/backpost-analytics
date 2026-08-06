@@ -1,3 +1,5 @@
+from typing import Any
+
 from sqlalchemy import func
 from sqlmodel import Session, col, select
 
@@ -10,9 +12,30 @@ class CompetitionRepository:
         self.session = session
 
     def list_all(
-        self, skip: int = 0, limit: int = 100, has_matches: bool = False
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        has_matches: bool = False,
+        has_events: bool = False,
     ) -> tuple[list[tuple[Competition, int]], int]:
+        from app.models.event import Event
         from app.models.match import SoccerMatch
+
+        def _events_exist_clause() -> Any:
+            # A competition "has events" if at least one of its matches has
+            # at least one event — has_matches alone isn't enough, since the
+            # full competition/match catalog is ingested up front while
+            # events are ingested per competition/season separately.
+            # Flattened into one EXISTS(JOIN) rather than nested EXISTS(EXISTS):
+            # SoccerMatch would otherwise be both the middle query's FROM and
+            # the inner query's correlation target, which SQLAlchemy can't
+            # auto-correlate unambiguously.
+            return (
+                select(col(SoccerMatch.id))
+                .join(Event, col(Event.match_id) == col(SoccerMatch.id))
+                .where(col(SoccerMatch.competition_id) == col(Competition.id))
+                .exists()
+            )
 
         count_stmt = select(func.count()).select_from(Competition)
         if has_matches:
@@ -22,6 +45,8 @@ class CompetitionRepository:
                 .exists()
             )
             count_stmt = count_stmt.where(match_exists)
+        if has_events:
+            count_stmt = count_stmt.where(_events_exist_clause())
         count = self.session.exec(count_stmt).one()
 
         stmt = (
@@ -37,6 +62,8 @@ class CompetitionRepository:
         )
         if has_matches:
             stmt = stmt.having(func.count(col(SoccerMatch.id)) > 0)
+        if has_events:
+            stmt = stmt.where(_events_exist_clause())
 
         rows = self.session.exec(stmt).all()
         return [(Competition.model_validate(r[0]), r[1]) for r in rows], count

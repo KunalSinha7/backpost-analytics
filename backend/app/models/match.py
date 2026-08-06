@@ -45,3 +45,7 @@ class SoccerMatchPublic(SoccerMatchBase):
 class SoccerMatchesPublic(SQLModel):
     data: list[SoccerMatchPublic]
     count: int
+
+
+class SoccerTeamsPublic(SQLModel):
+    data: list[str]

@@ -55,6 +55,32 @@ def test_competition_get_by_statsbomb_key_not_found(db: Session) -> None:
         repo.get_by_statsbomb_key(99999, 99999)
 
 
+def test_competition_list_all_has_events_filter(db: Session) -> None:
+    comp_with_events = create_competition(db, statsbomb_id=1004, season_id=1004)
+    comp_matches_only = create_competition(db, statsbomb_id=1005, season_id=1005)
+    match_with_events = create_match(db, comp_with_events.id, statsbomb_id=10041)
+    create_match(db, comp_matches_only.id, statsbomb_id=10051)
+    create_event(db, match_with_events.id)
+
+    repo = CompetitionRepository(db)
+    rows, count = repo.list_all(has_events=True)
+    ids = [c.id for c, _ in rows]
+    assert comp_with_events.id in ids
+    assert comp_matches_only.id not in ids
+    assert count == len(rows)
+
+
+def test_competition_list_all_has_events_false_includes_matches_only(
+    db: Session,
+) -> None:
+    comp = create_competition(db, statsbomb_id=1006, season_id=1006)
+    create_match(db, comp.id, statsbomb_id=10061)
+
+    repo = CompetitionRepository(db)
+    rows, _ = repo.list_all(has_matches=True, has_events=False)
+    assert any(c.id == comp.id for c, _ in rows)
+
+
 # ── MatchRepository ────────────────────────────────────────────────────────
 
 
@@ -109,6 +135,48 @@ def test_match_list_for_competition_missing_comp(db: Session) -> None:
     repo = MatchRepository(db)
     matches = repo.list_for_competition(99999, 99999)
     assert matches == []
+
+
+def test_match_list_distinct_teams(db: Session) -> None:
+    comp = create_competition(db, statsbomb_id=2006, season_id=2006)
+    create_match(
+        db, comp.id, statsbomb_id=20007, home_team="Gamma United", away_team="Delta FC"
+    )
+    create_match(
+        db, comp.id, statsbomb_id=20008, home_team="Delta FC", away_team="Epsilon City"
+    )
+    repo = MatchRepository(db)
+    teams = repo.list_distinct_teams(competition_id=comp.id)
+    assert teams == ["Delta FC", "Epsilon City", "Gamma United"]
+
+
+def test_match_list_distinct_teams_filter_by_competition(db: Session) -> None:
+    comp_a = create_competition(db, statsbomb_id=2007, season_id=2007)
+    comp_b = create_competition(db, statsbomb_id=2008, season_id=2008)
+    create_match(
+        db, comp_a.id, statsbomb_id=20009, home_team="Zeta A", away_team="Eta A"
+    )
+    create_match(
+        db, comp_b.id, statsbomb_id=20010, home_team="Theta B", away_team="Iota B"
+    )
+    repo = MatchRepository(db)
+    teams = repo.list_distinct_teams(competition_id=comp_a.id)
+    assert "Zeta A" in teams
+    assert "Eta A" in teams
+    assert "Theta B" not in teams
+
+
+def test_match_list_distinct_teams_has_events_filter(db: Session) -> None:
+    comp = create_competition(db, statsbomb_id=2009, season_id=2009)
+    match_with = create_match(
+        db, comp.id, statsbomb_id=20011, home_team="Kappa FC", away_team="Lambda FC"
+    )
+    create_match(db, comp.id, statsbomb_id=20012, home_team="Mu FC", away_team="Nu FC")
+    create_event(db, match_with.id)
+
+    repo = MatchRepository(db)
+    teams = repo.list_distinct_teams(competition_id=comp.id, has_events=True)
+    assert teams == ["Kappa FC", "Lambda FC"]
 
 
 # ── EventRepository ────────────────────────────────────────────────────────
