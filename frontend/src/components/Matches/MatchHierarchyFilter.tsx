@@ -34,9 +34,9 @@ export function MatchHierarchyFilter({
   // competition/team dropdown would blank the row while its query refetches,
   // which reads as the whole filter resetting rather than narrowing.
   const { data: compsData } = useQuery({
-    queryKey: ["competitions", "hasMatches"],
+    queryKey: ["competitions", "hasEvents"],
     queryFn: () =>
-      SoccerService.readCompetitions({ skip: 0, limit: 500, hasMatches: true }),
+      SoccerService.readCompetitions({ skip: 0, limit: 500, hasEvents: true }),
     placeholderData: keepPreviousData,
   })
 

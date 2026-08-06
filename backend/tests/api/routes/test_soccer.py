@@ -42,6 +42,30 @@ def test_read_competitions_with_data(
     assert "Route Test League" in names
 
 
+def test_read_competitions_filter_by_has_events(
+    client: TestClient, superuser_token_headers: dict, db: Session
+) -> None:
+    comp_with_events = create_competition(
+        db, statsbomb_id=8002, season_id=8002, competition_name="Has Events League"
+    )
+    comp_matches_only = create_competition(
+        db, statsbomb_id=8003, season_id=8003, competition_name="Matches Only League"
+    )
+    match = create_match(db, comp_with_events.id, statsbomb_id=80025)
+    create_match(db, comp_matches_only.id, statsbomb_id=80035)
+    create_event(db, match.id)
+
+    response = client.get(
+        f"{BASE}/competitions/",
+        params={"has_events": True},
+        headers=superuser_token_headers,
+    )
+    assert response.status_code == 200
+    names = [c["competition_name"] for c in response.json()["data"]]
+    assert "Has Events League" in names
+    assert "Matches Only League" not in names
+
+
 def test_ingest_soccer_data(client: TestClient, superuser_token_headers: dict) -> None:
     comps_df = pd.DataFrame(
         [

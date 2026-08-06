@@ -271,6 +271,7 @@ export type PrivateCreateUserData = {
 export type PrivateCreateUserResponse = (UserPublic);
 
 export type ReadCompetitionsData = {
+    hasEvents?: boolean;
     hasMatches?: boolean;
     limit?: number;
     skip?: number;

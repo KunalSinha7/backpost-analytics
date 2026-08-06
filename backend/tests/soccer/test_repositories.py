@@ -55,6 +55,32 @@ def test_competition_get_by_statsbomb_key_not_found(db: Session) -> None:
         repo.get_by_statsbomb_key(99999, 99999)
 
 
+def test_competition_list_all_has_events_filter(db: Session) -> None:
+    comp_with_events = create_competition(db, statsbomb_id=1004, season_id=1004)
+    comp_matches_only = create_competition(db, statsbomb_id=1005, season_id=1005)
+    match_with_events = create_match(db, comp_with_events.id, statsbomb_id=10041)
+    create_match(db, comp_matches_only.id, statsbomb_id=10051)
+    create_event(db, match_with_events.id)
+
+    repo = CompetitionRepository(db)
+    rows, count = repo.list_all(has_events=True)
+    ids = [c.id for c, _ in rows]
+    assert comp_with_events.id in ids
+    assert comp_matches_only.id not in ids
+    assert count == len(rows)
+
+
+def test_competition_list_all_has_events_false_includes_matches_only(
+    db: Session,
+) -> None:
+    comp = create_competition(db, statsbomb_id=1006, season_id=1006)
+    create_match(db, comp.id, statsbomb_id=10061)
+
+    repo = CompetitionRepository(db)
+    rows, _ = repo.list_all(has_matches=True, has_events=False)
+    assert any(c.id == comp.id for c, _ in rows)
+
+
 # ── MatchRepository ────────────────────────────────────────────────────────
 
 
