@@ -588,13 +588,16 @@ Discovered the hard way on 2026-08-06: `bash scripts/tests-start.sh` deleted all
 
 **Why this is a plan-level problem, not just an annoyance.** §1.5 says the Phase 1 event backfill is "a pure in-database operation, no re-fetch" — which is true, but only because the ids live in `event.raw_event`. **A test run deletes those rows.** So the sequence "write migration → run tests → run backfill" silently destroys the backfill's own input, and the backfill then succeeds against an empty table and reports zero rows updated. That is a false green.
 
-**Required before Phase 1 touches real data:**
+**✅ FIXED 2026-08-07** — two layers, because either alone is defeatable:
 
-- Point the test suite at a separate database (e.g. `app_test`), or make `_wipe_soccer_data` refuse to run against a DB containing more rows than a fixture set would create.
-- Until that lands: **never run the backend suite on a machine holding data you have not re-ingested**, and treat re-ingest as part of the recovery cost of any test run.
-- Phase 1's gate must assert non-zero row counts *before* the backfill, not only after — otherwise an empty table passes every check.
+1. **Isolation.** `scripts/tests-start.sh` exports `POSTGRES_DB=${POSTGRES_DB_TEST:-${POSTGRES_DB}_test}` before Python starts — the engine is built from settings at import time, so this needs no application change. The script creates the database if absent and brings it up with `alembic upgrade head`, so schema comes from migrations exactly as in production rather than from `create_all()`.
+2. **A guard.** `conftest._assert_disposable_database()` refuses to run unless the connected database name ends in `_test`, and `_wipe_soccer_data` calls it first. Running `pytest` by hand against dev now raises immediately instead of deleting.
 
-Recovery is possible but not free: the catalog re-ingests in ~1 minute, events take considerably longer and are network-bound.
+Verified end-to-end: dev DB held 1,365,934 events / 3,961 matches / 80 competitions **before and after** a full suite run; `app` and `app_test` exist side by side; the guard raises when pointed at `app`.
+
+**Still required for Phase 1** (the data hazard is closed, the false-green one is not):
+
+- Phase 1's gate must assert non-zero row counts *before* the backfill, not only after — otherwise an empty table passes every check and reports success.
 
 ### 7.2 The hard constraint on parallelism: Alembic serializes all schema work
 
