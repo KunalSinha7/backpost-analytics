@@ -49,6 +49,7 @@ class CompetitionService:
                     match_available=comp_row.match_available,
                     match_updated_360=comp_row.match_updated_360,
                     match_available_360=comp_row.match_available_360,
+                    raw=comp_row.model_dump(),
                 )
                 self.repo.add(comp)
                 existing.add((cid, sid))

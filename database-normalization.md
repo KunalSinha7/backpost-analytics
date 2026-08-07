@@ -499,7 +499,18 @@ Independent adversarial review. **Every factual claim below was re-verified agai
 ### High
 
 - **H1 — Cut the `statsbomb_id` rename from this plan.** It is in the `required` list of 5 public schemas and is a **rendered UI column** (`PlayerTable.tsx:57`), plus `competition_statsbomb_id` is a public query param. That is a breaking OpenAPI change delivering **zero capability** — `source_id`/`external_id` can coexist with `statsbomb_id` indefinitely. Do it when a second source actually lands. ✅ **Cut** from Phase 4.
-- **H2 — `event.match_id` has no index.** Verified: `event` has only `event_pkey` and `ix_event_statsbomb_id`. This is the primary read path (`read_events` defaults `limit=10000`) *and* backs both `_events_exist_clause` EXISTS subqueries, so `/competitions?has_events=true` seq-scans 376k rows. ✅ **Moved to Phase 0** as `ix_event_match_id_index (match_id, "index")` — pure win, independent of normalization, and gives a clean before/after number.
+- **H2 — `event.match_id` has no index.** Verified: `event` has only `event_pkey` and `ix_event_statsbomb_id`. This is the primary read path (`read_events` defaults `limit=10000`) *and* backs both `_events_exist_clause` EXISTS subqueries, so `/competitions?has_events=true` seq-scans 376k rows. ✅ **Moved to Phase 0** as `ix_event_match_id_index (match_id, "index")`.
+
+  **Measured 2026-08-07 — and that index alone was NOT enough.** With only the event index, `/competitions?has_events=true` still took **14,136 ms**: the planner did use it, then seq-scanned `soccer_match` once per competition because the correlating column was unindexed. `ix_soccer_match_competition_id` was the missing half:
+
+  ```
+  event index only                : 14,136 ms
+  + ix_soccer_match_competition_id:      5.5 ms     ← 2,560×
+  ```
+
+  Both now ship in Phase 0 (revisions `87e65e37d56a` and `87e2e9cbdd6e`). The plan had `soccer_match.competition_id` slated for Phase 3; it is a pure perf win with no schema semantics, so there was no reason to wait.
+
+  **Lesson to carry into later phases:** an index the planner *uses* is not the same as an index that makes the query *fast*. `EXPLAIN` proudly showed `Index Only Scan using ix_event_match_id_index` while the statement took 14 seconds. **Verify perf gates by timing, not by grepping the plan for an index name.**
 - **H3 — "byte-identical responses" is unachievable as a gate.** `read_events(team=...)` filters *event*-feed vocabulary while the dropdown is populated from *match*-feed vocabulary — **already broken for Marseille**; fixing it necessarily changes the response. ✅ **Gate restated** as "identical except the enumerated drift set = {team 147}". Also adds: assert distinct team count == 353 after the `sb.matches()` backfill, and set the tie-break explicitly — **match-feed name wins** (it is what the API emits today).
 - **H4 — Phase 1 ships nothing visible.** ✅ Added *additive* `home_team_id`/`away_team_id` to `SoccerMatchPublic` and optional `team_id` filter params. No frontend change required; the phase becomes demonstrable.
 

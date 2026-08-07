@@ -57,6 +57,12 @@ class LineupService:
                         jersey_number=player_row.jersey_number,
                         country_name=player_row.country,
                         started=player_row.is_starter(),
+                        # positions[] and cards[] are dropped by the typed
+                        # fields above and exist nowhere else, so capturing the
+                        # payload here is the only thing standing between us and
+                        # another re-fetch. positions[] in particular carries
+                        # minutes played, which per-90 season stats depend on.
+                        raw=player_row.model_dump(),
                     )
                     batch.append(lineup)
 

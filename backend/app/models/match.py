@@ -1,5 +1,6 @@
 import uuid
 
+from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -8,7 +9,10 @@ from app.models.competition import Competition
 
 class SoccerMatchBase(SQLModel):
     statsbomb_id: int = Field(index=True, unique=True)
-    competition_id: uuid.UUID = Field(foreign_key="competition.id")
+    # Indexed: /competitions?has_events=true correlates on this column, and
+    # without it the planner seq-scans soccer_match once per competition —
+    # measured at 14,136 ms vs 11.5 ms with the index on the same data.
+    competition_id: uuid.UUID = Field(foreign_key="competition.id", index=True)
     match_date: str = Field(max_length=20)
     kick_off: str | None = Field(default=None, max_length=20)
     home_team: str = Field(max_length=255)
@@ -38,7 +42,10 @@ class SoccerMatch(SoccerMatchBase, table=True):
     competition: Competition | None = Relationship(back_populates="matches")
     # Declared here and not on SoccerMatchBase so it stays out of
     # SoccerMatchPublic — same placement as Event.raw_event.
-    raw: dict | None = Field(default=None, sa_type=JSONB)
+    # none_as_null: see the note on Lineup.raw.
+    raw: dict | None = Field(
+        default=None, sa_column=Column(JSONB(none_as_null=True), nullable=True)
+    )
 
 
 class SoccerMatchPublic(SoccerMatchBase):

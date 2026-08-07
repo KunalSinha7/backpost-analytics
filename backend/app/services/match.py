@@ -89,6 +89,11 @@ class MatchService:
                     match_status=match_row.match_status,
                     last_updated=match_row.last_updated,
                     match_status_360=match_row.match_status_360,
+                    # Retains the nine *_id columns the typed fields drop
+                    # (home_team_id, away_team_id, referee_id, stadium_id,
+                    # manager ids, competition_stage_id). Phase 1 resolves
+                    # team FKs from these instead of re-fetching.
+                    raw=match_row.model_dump(),
                 )
                 self.repo.add(match)
                 existing.add(match_row.match_id)
