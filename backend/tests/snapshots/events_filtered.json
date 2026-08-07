@@ -1,0 +1,30 @@
+{
+  "count": 1,
+  "data": [
+    {
+      "duration": 1.25,
+      "end_location_x": 72.5,
+      "end_location_y": 41.0,
+      "id": "<uuid:1>",
+      "index": 2,
+      "location_x": 60.0,
+      "location_y": 40.0,
+      "match_id": "<uuid:2>",
+      "minute": 3,
+      "off_camera": null,
+      "out": null,
+      "pass_recipient": "Snapshot Bravo",
+      "period": 1,
+      "play_pattern_name": "Regular Play",
+      "player": "Snapshot Alpha",
+      "possession": 2,
+      "possession_team_name": "Snapshot Rovers",
+      "second": 14,
+      "statsbomb_id": "<uuid:3>",
+      "team": "Snapshot Rovers",
+      "timestamp": "00:03:14.159",
+      "type_name": "Pass",
+      "under_pressure": true
+    }
+  ]
+}

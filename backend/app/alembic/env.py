@@ -22,6 +22,7 @@ fileConfig(config.config_file_name)
 from app.models import SQLModel  # noqa
 from app.core.config import settings  # noqa
 from app.models.competition import Competition  # noqa
+from app.models.data_source import DataSource  # noqa
 from app.models.match import SoccerMatch  # noqa
 from app.models.event import Event  # noqa
 from app.models.lineup import Lineup  # noqa

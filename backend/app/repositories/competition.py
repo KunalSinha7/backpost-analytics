@@ -66,7 +66,10 @@ class CompetitionRepository:
             stmt = stmt.where(_events_exist_clause())
 
         rows = self.session.exec(stmt).all()
-        return [(Competition.model_validate(r[0]), r[1]) for r in rows], count
+        # Hand back the session-attached ORM row as-is. `Competition.model_validate`
+        # would build a detached copy, dropping it out of the identity map and
+        # walking `Competition.matches` on the way — one extra query per row.
+        return [(competition, match_count) for competition, match_count in rows], count
 
     def get_existing_keys(self) -> set[tuple[int, int]]:
         return {

@@ -2,9 +2,12 @@ from sqlmodel import Session, create_engine, select
 
 from app.core.config import settings
 from app.models import User, UserCreate
+from app.models.data_source import DataSource
 from app.repositories.user import create_user
 
 engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
+
+STATSBOMB_SOURCE_KEY = "statsbomb"
 
 
 # make sure all SQLModel models are imported (app.models) before initializing DB
@@ -31,3 +34,10 @@ def init_db(session: Session) -> None:
             is_superuser=True,
         )
         user = create_user(session=session, user_create=user_in)
+
+    source = session.exec(
+        select(DataSource).where(DataSource.key == STATSBOMB_SOURCE_KEY)
+    ).first()
+    if not source:
+        session.add(DataSource(key=STATSBOMB_SOURCE_KEY, name="StatsBomb"))
+        session.commit()

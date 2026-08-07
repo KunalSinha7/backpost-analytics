@@ -1,5 +1,6 @@
 import uuid
 
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
 
@@ -16,6 +17,10 @@ class LineupBase(SQLModel):
 
 class Lineup(LineupBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # Declared here and not on LineupBase so it stays out of LineupPublic —
+    # same placement as Event.raw_event. NULL means "ingested before this
+    # column existed", which is distinct from an empty payload.
+    raw: dict | None = Field(default=None, sa_type=JSONB)
 
 
 class LineupPublic(LineupBase):

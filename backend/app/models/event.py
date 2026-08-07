@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import JSON
+from sqlalchemy import JSON, Index
 from sqlmodel import Field, SQLModel
 
 
@@ -30,6 +30,11 @@ class EventBase(SQLModel):
 
 
 class Event(EventBase, table=True):
+    # Composite rather than a plain index=True on match_id: every read of this
+    # table is "the events of one match, in index order", so the second column
+    # serves the ORDER BY as well as the lookup. A leading-column-only index
+    # would be redundant with this one.
+    __table_args__ = (Index("ix_event_match_id_index", "match_id", "index"),)
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     raw_event: dict = Field(default_factory=dict, sa_type=JSON)
 

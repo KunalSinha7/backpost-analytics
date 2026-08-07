@@ -1,5 +1,6 @@
 import uuid
 
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, Relationship, SQLModel
 
 from app.models.competition import Competition
@@ -35,6 +36,9 @@ class SoccerMatch(SoccerMatchBase, table=True):
     __tablename__ = "soccer_match"  # type: ignore[assignment]
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     competition: Competition | None = Relationship(back_populates="matches")
+    # Declared here and not on SoccerMatchBase so it stays out of
+    # SoccerMatchPublic — same placement as Event.raw_event.
+    raw: dict | None = Field(default=None, sa_type=JSONB)
 
 
 class SoccerMatchPublic(SoccerMatchBase):

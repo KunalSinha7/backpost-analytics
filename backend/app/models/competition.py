@@ -1,6 +1,7 @@
 import uuid
 
 from sqlalchemy import UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -25,6 +26,9 @@ class Competition(CompetitionBase, table=True):
     matches: list["SoccerMatch"] = Relationship(  # type: ignore  # noqa: F821
         back_populates="competition", cascade_delete=True
     )
+    # Declared here and not on CompetitionBase so it stays out of
+    # CompetitionPublic — same placement as Event.raw_event.
+    raw: dict | None = Field(default=None, sa_type=JSONB)
 
 
 class CompetitionPublic(CompetitionBase):
