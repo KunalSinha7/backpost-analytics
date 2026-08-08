@@ -1,14 +1,20 @@
+import random
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 
 import pytest
+from sqlalchemy import event, inspect
 from sqlmodel import Session
 
 from app.exceptions.competition import CompetitionNotFoundError
+from app.models.player import Player
 from app.repositories.competition import CompetitionRepository
 from app.repositories.event import EventRepository
 from app.repositories.frame360 import Frame360Repository
 from app.repositories.lineup import LineupRepository
 from app.repositories.match import MatchRepository
+from app.repositories.player import PlayerRepository
 from tests.utils.soccer import (
     create_competition,
     create_event,
@@ -79,6 +85,76 @@ def test_competition_list_all_has_events_false_includes_matches_only(
     repo = CompetitionRepository(db)
     rows, _ = repo.list_all(has_matches=True, has_events=False)
     assert any(c.id == comp.id for c, _ in rows)
+
+
+@contextmanager
+def capture_sql(session: Session) -> Iterator[list[str]]:
+    """Record every statement the session's engine executes inside the block."""
+    statements: list[str] = []
+    engine = session.get_bind()
+
+    def record(_conn: object, _cursor: object, statement: str, *_rest: object) -> None:
+        statements.append(statement)
+
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        yield statements
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+
+
+def test_competition_list_all_returns_session_attached_rows(db: Session) -> None:
+    """list_all must hand back the live ORM row, not a detached copy.
+
+    `Model.model_validate(row)` on a `table=True` class builds a *new transient*
+    instance. It is never attached to the session, so it silently drops out of
+    the identity map: refreshing it, mutating it, or re-querying it no longer
+    refers to the same row.
+    """
+    comp = create_competition(db, statsbomb_id=1007, season_id=1007)
+    create_match(db, comp.id, statsbomb_id=10071)
+
+    rows, _ = CompetitionRepository(db).list_all()
+    returned = next(c for c, _ in rows if c.id == comp.id)
+
+    assert inspect(returned).persistent, "row is detached from the session"
+    assert returned is comp, "row is a copy, not the identity-mapped instance"
+
+
+def test_competition_list_all_does_not_lazy_load_matches(db: Session) -> None:
+    """`model_validate` resolves `Competition.matches` — one extra query per row.
+
+    Contrary to what one might expect, the relationship is not dropped by the
+    copy: it is *eagerly walked* while building it. So the cost is a hidden N+1
+    plus every SoccerMatch hydrated into memory, for a column no caller reads.
+    """
+    comp = create_competition(db, statsbomb_id=1008, season_id=1008)
+    for i in range(3):
+        create_match(db, comp.id, statsbomb_id=10080 + i)
+
+    with capture_sql(db) as statements:
+        CompetitionRepository(db).list_all()
+
+    lazy_loads = [s for s in statements if "FROM soccer_match" in s]
+    assert lazy_loads == [], f"{len(lazy_loads)} per-row soccer_match queries"
+
+
+def test_player_list_all_returns_session_attached_rows(db: Session) -> None:
+    """Same detached-copy defect on the player path."""
+    statsbomb_id = random.randint(10_000_000, 99_999_999)
+    player = Player(statsbomb_id=statsbomb_id, name="Relationship Probe")
+    db.add(player)
+    db.commit()
+    try:
+        rows, _ = PlayerRepository(db).list_all(name_search="Relationship Probe")
+        returned = next(p for p, _ in rows if p.id == player.id)
+
+        assert inspect(returned).persistent, "row is detached from the session"
+        assert returned is player, "row is a copy, not the identity-mapped instance"
+    finally:
+        # conftest's _wipe_soccer_data does not cover `player`.
+        db.delete(player)
+        db.commit()
 
 
 # ── MatchRepository ────────────────────────────────────────────────────────

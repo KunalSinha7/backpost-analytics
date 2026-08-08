@@ -21,6 +21,10 @@ def _clean_nan(data: dict[str, Any]) -> dict[str, Any]:
 
 
 class _StatsBombRow(BaseModel):
+    # Retain unmodelled feed columns rather than dropping them at parse time —
+    # e.g. sb.matches()'s *_id columns, which are not recoverable once discarded.
+    model_config = ConfigDict(extra="allow")
+
     @model_validator(mode="before")
     @classmethod
     def preprocess(cls, data: dict) -> dict:
@@ -68,8 +72,6 @@ class StatsBombMatchRow(_StatsBombRow):
 
 
 class StatsBombEventRow(_StatsBombRow):
-    model_config = ConfigDict(extra="allow")
-
     id: str
     index: int
     period: int
@@ -121,8 +123,6 @@ class StatsBombLineupPlayerRow(_StatsBombRow):
 
 
 class StatsBombFrameRow(_StatsBombRow):
-    model_config = ConfigDict(extra="allow")
-
     id: str = ""
     visible_area: list = []
     freeze_frame: list = []

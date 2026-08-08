@@ -22,8 +22,31 @@ from tests.utils.utils import get_superuser_token_headers
 _test_user_ids: set[uuid.UUID] = set()
 
 
+def _assert_disposable_database() -> None:
+    """Refuse to run against a database that isn't ours to destroy.
+
+    The fixtures below delete every row of soccer data unconditionally. Because
+    the engine is built from ``settings.POSTGRES_DB`` at import time, pointing
+    the suite at the development database is a single env var away — and on
+    2026-08-06 that is exactly what happened, taking 376k events with it.
+
+    Requiring a ``_test`` suffix makes the mistake loud instead of destructive.
+    ``scripts/tests-start.sh`` sets this; running pytest by hand without it
+    fails here rather than halfway through the first fixture.
+    """
+    db_name = settings.POSTGRES_DB
+    if not db_name.endswith("_test"):
+        raise RuntimeError(
+            f"Refusing to run: the test suite deletes all soccer data, but "
+            f"POSTGRES_DB is {db_name!r}, which is not a test database.\n"
+            f"Run via `bash scripts/tests-start.sh`, or set "
+            f"POSTGRES_DB={db_name}_test explicitly."
+        )
+
+
 def _wipe_soccer_data(session: Session) -> None:
     """Delete all soccer test data respecting FK order: children before parents."""
+    _assert_disposable_database()
     session.execute(delete(Event))
     session.execute(delete(Frame360))
     session.execute(delete(Lineup))

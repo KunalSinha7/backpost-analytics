@@ -1,5 +1,7 @@
 import uuid
 
+from sqlalchemy import Column
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
 
@@ -16,6 +18,16 @@ class LineupBase(SQLModel):
 
 class Lineup(LineupBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # Declared here and not on LineupBase so it stays out of LineupPublic —
+    # same placement as Event.raw_event. SQL NULL means "ingested before this
+    # column existed", as distinct from a captured-but-empty payload.
+    #
+    # none_as_null is what makes that distinction real: without it SQLAlchemy
+    # writes Python None as the JSON `null` literal, which is IS NOT NULL in
+    # SQL, so "never captured" becomes indistinguishable from "captured null".
+    raw: dict | None = Field(
+        default=None, sa_column=Column(JSONB(none_as_null=True), nullable=True)
+    )
 
 
 class LineupPublic(LineupBase):

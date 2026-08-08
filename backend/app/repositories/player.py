@@ -35,7 +35,9 @@ class PlayerRepository:
             stmt = stmt.where(col(Player.name).ilike(f"%{name_search}%"))
 
         rows = self.session.exec(stmt).all()
-        return [(Player.model_validate(r[0]), r[1]) for r in rows], count
+        # Session-attached ORM row, not a `Player.model_validate` copy — see the
+        # note in CompetitionRepository.list_all.
+        return [(player, match_count) for player, match_count in rows], count
 
     def upsert_from_lineup_batch(self, lineups: list[Lineup]) -> int:
         existing_ids = set(self.session.exec(select(col(Player.statsbomb_id))).all())
