@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 class MatchService:
     def __init__(self, session: Session) -> None:
+        self.session = session
         self.repo = MatchRepository(session)
 
     def list_matches(
@@ -101,3 +102,61 @@ class MatchService:
 
         logger.info("Match ingest: %d new", imported)
         return imported
+
+    def backfill_raw(self, competitions: list[Competition]) -> int:
+        """Populate `raw` on matches ingested before that column existed.
+
+        `ingest` only ever inserts — it skips any match_id it already has — so
+        re-running it will not touch an existing row. Without this path the
+        3,961 rows already in the database keep a NULL `raw` forever.
+
+        Worth doing before Phase 1 rather than during it: that phase resolves
+        home/away team FKs out of this payload, so filling it now turns the
+        team backfill into a pure in-database operation, the same way
+        `event.raw_event` already does for events. Otherwise Phase 1 pays for
+        a second network pass over every competition.
+
+        Idempotent: rows that already have a payload are left alone, so a
+        partial run can simply be repeated.
+        """
+        from statsbombpy import sb  # type: ignore[import-untyped]
+
+        updated = 0
+        for competition in competitions:
+            existing = {
+                m.statsbomb_id: m
+                for m in self.repo.list_for_competition(
+                    competition.statsbomb_id, competition.season_id
+                )
+            }
+            if not existing or all(m.raw is not None for m in existing.values()):
+                continue
+
+            try:
+                matches_df = sb.matches(
+                    competition_id=competition.statsbomb_id,
+                    season_id=competition.season_id,
+                )
+            except Exception:
+                logger.warning(
+                    "Could not fetch matches for raw backfill: "
+                    "competition_id=%s season_id=%s",
+                    competition.statsbomb_id,
+                    competition.season_id,
+                )
+                continue
+
+            for _, mrow in matches_df.iterrows():
+                match_row = StatsBombMatchRow.model_validate(mrow.to_dict())
+                match = existing.get(match_row.match_id)
+                if match is None or match.raw is not None:
+                    continue
+                match.raw = match_row.model_dump()
+                updated += 1
+
+            # Commit per competition to keep transactions bounded, matching
+            # how the event and lineup ingests behave.
+            self.session.commit()
+
+        logger.info("Match raw backfill: %d rows populated", updated)
+        return updated

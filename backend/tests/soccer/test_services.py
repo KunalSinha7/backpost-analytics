@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 
 from app.exceptions.event import StatsBombFetchError
 from app.models.event import Event
+from app.models.match import SoccerMatch
 from app.services.competition import CompetitionService
 from app.services.event import EventService
 from app.services.frame360 import Frame360Service
@@ -178,6 +179,83 @@ def test_match_service_ingest_idempotent(db: Session) -> None:
         n2 = MatchService(db).ingest([comp])
     assert n1 >= 1
     assert n2 == 0
+
+
+# IDs 6019-6021 / matches 60016-60018 reserved for raw backfill tests
+
+
+def _matches_df_with_ids(match_id: int) -> pd.DataFrame:
+    """A match row carrying the *_id columns the typed fields drop.
+
+    StatsBombMatchRow declares none of these; they survive only because
+    _StatsBombRow sets extra="allow". Phase 1 resolves team FKs from them.
+    """
+    df = _matches_df(match_id)
+    df["home_team_id"] = 147
+    df["away_team_id"] = 200
+    df["competition_stage_id"] = 10
+    return df
+
+
+def _strip_raw(db: Session, statsbomb_id: int) -> SoccerMatch:
+    """Return a match to its pre-`raw`-column state."""
+    match = db.exec(
+        select(SoccerMatch).where(SoccerMatch.statsbomb_id == statsbomb_id)
+    ).one()
+    match.raw = None
+    db.add(match)
+    db.commit()
+    return match
+
+
+def test_match_service_backfill_raw_populates_existing_rows(db: Session) -> None:
+    comp = create_competition(db, statsbomb_id=6019, season_id=6019)
+    with patch("statsbombpy.sb.matches", return_value=_matches_df_with_ids(60016)):
+        MatchService(db).ingest([comp])
+    db.commit()
+    match = _strip_raw(db, 60016)
+    assert match.raw is None
+
+    with patch("statsbombpy.sb.matches", return_value=_matches_df_with_ids(60016)):
+        updated = MatchService(db).backfill_raw([comp])
+
+    assert updated == 1
+    db.refresh(match)
+    # The point of the backfill: ids the typed columns never stored.
+    assert match.raw is not None
+    assert match.raw["home_team_id"] == 147
+    assert match.raw["away_team_id"] == 200
+    assert match.raw["competition_stage_id"] == 10
+
+
+def test_match_service_backfill_raw_is_idempotent(db: Session) -> None:
+    comp = create_competition(db, statsbomb_id=6020, season_id=6020)
+    with patch("statsbombpy.sb.matches", return_value=_matches_df_with_ids(60017)):
+        MatchService(db).ingest([comp])
+    db.commit()
+    _strip_raw(db, 60017)
+
+    with patch("statsbombpy.sb.matches", return_value=_matches_df_with_ids(60017)):
+        first = MatchService(db).backfill_raw([comp])
+    # A second pass must not even re-fetch, so a partial run is safe to repeat.
+    with patch("statsbombpy.sb.matches", side_effect=AssertionError("re-fetched")):
+        second = MatchService(db).backfill_raw([comp])
+
+    assert first == 1
+    assert second == 0
+
+
+def test_match_service_backfill_raw_survives_fetch_error(db: Session) -> None:
+    comp = create_competition(db, statsbomb_id=6021, season_id=6021)
+    with patch("statsbombpy.sb.matches", return_value=_matches_df_with_ids(60018)):
+        MatchService(db).ingest([comp])
+    db.commit()
+    _strip_raw(db, 60018)
+
+    with patch("statsbombpy.sb.matches", side_effect=Exception("network error")):
+        updated = MatchService(db).backfill_raw([comp])
+
+    assert updated == 0
 
 
 # ── EventService ───────────────────────────────────────────────────────────

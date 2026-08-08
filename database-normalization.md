@@ -384,7 +384,7 @@ One query, no lazy loads. Keeping denormalized copies would re-open exactly the 
 | Entity | Source of truth for backfill | Re-fetch needed? |
 |---|---|---|
 | `event.team_id`, `possession_team_id`, `player_id`, `pass_recipient_id` | `raw_event` JSON — **100% coverage, verified** | **No** — pure SQL/Python over the existing table |
-| `soccer_match.home/away_team_id` | 94 of 3,961 matches derivable from their events; the rest need `sb.matches()` | Yes, but cheap: 80 cached calls, idempotent |
+| `soccer_match.home/away_team_id` | **`soccer_match.raw`** — populated for all 3,961 rows by `MatchService.backfill_raw` in Phase 0 | **No** — the re-fetch already happened |
 | `lineup.player_id` | `lineup.statsbomb_player_id` → `player.statsbomb_id` | No |
 | `event.position_id`, `substitution_replacement_id` | `raw_event` JSON — 100% of player events | No |
 | `lineup.team_id` | **`sb.lineups()` has no team id (§1.6).** `lineup.team_name` →(same match)→ `event.team` → `raw_event->>'team_id'`. Verified 3,745/3,745, 0 ambiguous. **Never against the match's teams** — that fails on the 20 Marseille rows | No |
@@ -518,8 +518,16 @@ Independent adversarial review. **Every factual claim below was re-verified agai
 
 - **M1 — `EntityResolver` must move to Phase 1, not Phase 4.** Phases 1–2 cannot avoid StatsBomb-specific ingest code (ingest has to populate the new FKs or the backfill decays). ✅ Applied. The `SourceProvider` Protocol/DTOs stay at Phase 4 — that's a `git mv`, not a rewrite. **Explicitly do not port fully first**: designing source-neutral DTOs before the entity shapes settle means rewriting them in Phase 1.
 - **M2 — The proposed arch rule may be vacuous.** All five `from statsbombpy import sb` are **function-local**. Verify pytestarch descends into function bodies — otherwise the test is green on day one while every violation persists. ⬜ **Write the test red first.** Also widen its scope: `api/routes/competition.py` imports statsbombpy **inside a route handler** and makes a synchronous vendor HTTP call in the request path.
-- **M3 — Resolver will duplicate within a run.** `select` → miss → `add()` without flush re-misses on the next event, and `EventService` commits per match. ⬜ Contract: in-session dict cache on `(source_id, external_id)` + DB `UNIQUE` + `INSERT … ON CONFLICT DO NOTHING RETURNING id`.
-- **M4 — Missing constraints** (verified `lineup_dupes = 0`, all safe to add): `UNIQUE(lineup.match_id, player_id)` — today idempotency rests solely on `has_lineups_for_match`, so a half-failed lineup ingest is **permanently stuck and silently skipped**, which matters more now that Phase 0 re-fetches lineups. Plus `UNIQUE(team.source_id, external_id)`, `UNIQUE(player.source_id, external_id)`, `UNIQUE(frame360.event_id)`. Also: `MatchService.ingest` only ever **inserts**, so the team-id backfill cannot be "just re-run ingest" — it needs a dedicated update path.
+- **M3 — Resolver will duplicate within a run.** ⚠️ **WRONG AS STATED — probed 2026-08-07.** The claim assumes a pending `add()` is invisible to the next `select`. It is not: `Session.autoflush` defaults to `True`, so SQLAlchemy flushes before the query and the lookup finds it.
+
+  ```
+  session.autoflush = True
+  miss → add() → look again  : FOUND    (no duplicate)
+  same with autoflush=False  : MISSED   (would duplicate)
+  ```
+
+  So the resolver is safe **by default**, and the hazard is real only if someone disables autoflush. Keep the `UNIQUE(source_id, external_id)` constraint from M4 as defence in depth — it costs nothing and makes the failure loud — but the in-session dict cache is a performance choice, not a correctness requirement. Do not build it as a bug fix.
+- **M4 — Missing constraints** (verified `lineup_dupes = 0`, all safe to add): `UNIQUE(lineup.match_id, player_id)` — today idempotency rests solely on `has_lineups_for_match`, so a half-failed lineup ingest is **permanently stuck and silently skipped**, which matters more now that Phase 0 re-fetches lineups. Plus `UNIQUE(team.source_id, external_id)`, `UNIQUE(player.source_id, external_id)`, `UNIQUE(frame360.event_id)`. Also: `MatchService.ingest` only ever **inserts**, so the team-id backfill cannot be "just re-run ingest" — it needs a dedicated update path. ✅ **Done in Phase 0** as `MatchService.backfill_raw`, which is idempotent (rows with a payload are skipped, and a second pass does not even re-fetch). Run against dev: **3,961/3,961 populated, all carrying `home_team_id`**, including `147` on the Marseille fixture — the same id the event feed uses. Phase 1's team resolution is therefore in-database, with no network pass.
 - **M5 — Add `team_alias(team_id, source_id, name)` in Phase 1.** The team merge is itself irreversible: collapsing `{"Marseille", "Olympique de Marseille"}` destroys per-feed provenance that only the string columns preserve today. Populated as a by-product of the resolver, it makes the merge auditable and Phase 4 genuinely reversible. ✅ Added to Phase 1.
 
 ### Serialization — the "strings via relationship" plan needs surgery
