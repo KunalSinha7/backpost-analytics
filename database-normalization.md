@@ -423,6 +423,28 @@ The Marseille pair is the acceptance test for the backfill: after it runs, `Olym
 
 Ordered so the capability you actually asked for (§1.3, season stats) lands early, and each phase is one PR.
 
+> #### Branching model (DECIDED 2026-08-08)
+>
+> Phases do **not** merge to `master` individually. A long-lived integration branch collects them:
+>
+> ```
+> master
+>   └── feature/db-normalization          ← integration branch, forked at 483e7cc
+>         ├── feature/phase0-normalization-foundations   → PR #35
+>         ├── feature/phase1-identity                    → PR (branches from integration)
+>         ├── feature/phase2-competition-split
+>         ├── feature/phase3-season-stats
+>         └── feature/phase4-contract
+> ```
+>
+> Each phase PR targets `feature/db-normalization` and is reviewed on its own. When Phase 4 lands, one final review of `feature/db-normalization` → `master` sees the entire normalization effort as a single coherent diff.
+>
+> **Consequences to respect:**
+>
+> - **Branch each phase off `feature/db-normalization`, not `master`** — otherwise the phase PR's diff includes every prior phase and is unreviewable.
+> - **The Alembic single-head rule now applies across the whole integration branch, not per phase.** Two phases in flight simultaneously will branch the head (§7.2). Since Phases 1–3 are single-threaded by design, this stays a non-issue — but the deferred issues ([#31](https://github.com/KunalSinha7/backpost-analytics/issues/31)/[#32](https://github.com/KunalSinha7/backpost-analytics/issues/32)/[#33](https://github.com/KunalSinha7/backpost-analytics/issues/33)), which *are* parallelizable, must serialize their migrations against this branch.
+> - **`master` keeps moving.** Rebase or merge `master` into the integration branch periodically rather than discovering the drift at final review.
+
 **DECIDED 2026-08-06.** Two changes from the first draft, both explained below the table.
 
 | Phase | Delivers | Risk | Key gate |
