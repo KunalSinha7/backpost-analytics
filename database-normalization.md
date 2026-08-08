@@ -191,6 +191,17 @@ unresolved                             : 0
 ambiguous (team_name → >1 team_id)     : 0
 ```
 
+**Re-verified 2026-08-08 at 3.6× the original scale**, after the Phase 0 re-ingest grew the DB to 1,365,934 events and 13,650 lineups:
+
+```
+lineup rows                            : 13,650
+resolved by the event-feed rule        : 13,650  (100%)
+unresolved                             : 0
+ambiguous (team_name → >1 team_id)     : 0
+```
+
+Worth re-running rather than assuming: the rule was originally validated on a strict subset of the data Phase 1 will actually backfill, and its gate (`lineup.team_id` NULL count = 0) admits no misses. It holds.
+
 This works because the **lineups and events feeds agree with each other**; it is the *match* feed that carries the alias. So: never join lineup→match on name; join lineup→event on name (same vocabulary, safe) and take the id.
 
 Do **not** use the player-mediated path (`(match_id, statsbomb_player_id)` → event `player_id` → `team_id`) as primary — 912 of 3,745 lineup rows are unused subs with no events. It is a valid cross-check only.
