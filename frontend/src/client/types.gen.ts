@@ -160,6 +160,8 @@ export type SoccerMatchPublic = {
     match_status?: (string | null);
     last_updated?: (string | null);
     match_status_360?: (string | null);
+    home_team_id?: (string | null);
+    away_team_id?: (string | null);
     id: string;
     has_events?: boolean;
 };

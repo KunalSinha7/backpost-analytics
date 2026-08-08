@@ -937,6 +937,30 @@ export const SoccerMatchPublicSchema = {
             ],
             title: 'Match Status 360'
         },
+        home_team_id: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'uuid'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Home Team Id'
+        },
+        away_team_id: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'uuid'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Away Team Id'
+        },
         id: {
             type: 'string',
             format: 'uuid',

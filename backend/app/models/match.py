@@ -34,6 +34,19 @@ class SoccerMatchBase(SQLModel):
     match_status: str | None = Field(default=None, max_length=50)
     last_updated: str | None = Field(default=None, max_length=50)
     match_status_360: str | None = Field(default=None, max_length=50)
+    # On the Base, and therefore on SoccerMatchPublic, deliberately: this is the
+    # one additive API change in Phase 1 (§6/H4), so the phase ships something
+    # callable instead of being pure plumbing. `home_team`/`away_team` keep
+    # emitting the same strings alongside, so no frontend code has to change.
+    #
+    # Nullable through expand+backfill; Phase 4 sets NOT NULL and drops the
+    # string columns.
+    home_team_id: uuid.UUID | None = Field(
+        default=None, foreign_key="team.id", index=True
+    )
+    away_team_id: uuid.UUID | None = Field(
+        default=None, foreign_key="team.id", index=True
+    )
 
 
 class SoccerMatch(SoccerMatchBase, table=True):

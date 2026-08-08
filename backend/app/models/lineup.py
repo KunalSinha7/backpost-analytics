@@ -18,6 +18,16 @@ class LineupBase(SQLModel):
 
 class Lineup(LineupBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # On the table class, not LineupBase: LineupPublic must not change shape in
+    # this phase. `team_name` / `statsbomb_player_id` keep serving the API.
+    #
+    # team_id is resolved through the *event* feed, never against the parent
+    # match's two teams — see §1.6/B0. Scoping a name comparison to two
+    # candidates is not an id match, and it fails on the 20 Marseille rows.
+    team_id: uuid.UUID | None = Field(default=None, foreign_key="team.id", index=True)
+    player_id: uuid.UUID | None = Field(
+        default=None, foreign_key="player.id", index=True
+    )
     # Declared here and not on LineupBase so it stays out of LineupPublic —
     # same placement as Event.raw_event. SQL NULL means "ingested before this
     # column existed", as distinct from a captured-but-empty payload.
