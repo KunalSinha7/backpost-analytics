@@ -122,6 +122,19 @@ Fold `ALTER TABLE event ALTER COLUMN raw_event TYPE jsonb` into the same migrati
 
 **Fix in Phase 0: move `extra="allow"` onto the `_StatsBombRow` base class, and add `raw` columns to `soccer_match` and `competition` as well as `lineup`.** Patching only `Lineup` leaves `soccer_match` in the state that caused this section.
 
+> **Verified 2026-08-08 — `competition.raw` is NULL on all 80 rows, and that is correct, not a defect.**
+>
+> `CompetitionService.ingest` sets `raw` only on the insert branch; every one of the 80 competitions already existed, so the `else` branch returns the row untouched. This is the same shape of gap that `MatchService.backfill_raw` exists to close — but **no competition backfill is warranted**, because the payload it would capture is empty:
+>
+> ```
+> sb.competitions() columns dropped by StatsBombCompetitionRow : []
+> StatsBombCompetitionRow fields absent from the feed          : []
+> ```
+>
+> The typed model covers the competitions feed exactly, so a backfill would recover zero data. It would not help with *future* feed columns either — a run today freezes today's schema. `raw IS NULL` here carries its documented meaning: ingested before the column existed, nothing captured, nothing lost.
+>
+> **Phase 1 is unaffected.** It resolves team/player FKs from `soccer_match.raw` (3,961/3,961 populated) and `event.raw_event` (1,365,934/1,365,934 populated). Phase 2's competition split reads the typed `statsbomb_id`/`season_id`/name columns, not `raw`.
+
 ### 1.6 Other fields discarded at the parser
 
 Beyond the entity ids in §1.5, a full enumeration of `raw_event` keys and the `sb.lineups()` payload found substantial data dropped at parse time. **In scope for this plan** (decided 2026-08-06, §6/S1):
