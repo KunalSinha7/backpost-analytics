@@ -15,6 +15,7 @@ from app.models.competition import Competition, CompetitionSeason, Season
 from app.models.event import Event
 from app.models.frame360 import Frame360
 from app.models.lineup import Lineup
+from app.models.lineup_position import LineupPosition
 from app.models.match import SoccerMatch
 from app.models.position import Position
 from app.models.team import Team, TeamAlias
@@ -52,6 +53,7 @@ def _wipe_soccer_data(session: Session) -> None:
     _assert_disposable_database()
     session.execute(delete(Event))
     session.execute(delete(Frame360))
+    session.execute(delete(LineupPosition))
     session.execute(delete(Lineup))
     session.execute(delete(SoccerMatch))
     session.execute(delete(CompetitionSeason))

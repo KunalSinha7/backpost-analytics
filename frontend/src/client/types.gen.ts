@@ -119,9 +119,34 @@ export type PlayerPublic = {
     match_count?: number;
 };
 
+/**
+ * Season stats for one player — the capability §1.3 set out to enable.
+ *
+ * Before this, answering it meant a 4-hop string-mediated join across 376k
+ * unindexed rows, and minutes played were unavailable at any price because
+ * they lived inside a JSON array.
+ */
+export type PlayerSeasonStats = {
+    player_id: string;
+    player_name: string;
+    season_id?: (string | null);
+    appearances: number;
+    minutes_played: number;
+    stats: Array<PlayerStatLine>;
+};
+
 export type PlayersPublic = {
     data: Array<PlayerPublic>;
     count: number;
+};
+
+/**
+ * One event type and how often the player produced it.
+ */
+export type PlayerStatLine = {
+    type_name: string;
+    count: number;
+    per_90: number;
 };
 
 export type PrivateUserCreate = {
@@ -347,6 +372,13 @@ export type ReadPlayersData = {
 };
 
 export type ReadPlayersResponse = (PlayersPublic);
+
+export type ReadPlayerSeasonStatsData = {
+    playerId: string;
+    seasonId?: (string | null);
+};
+
+export type ReadPlayerSeasonStatsResponse = (PlayerSeasonStats);
 
 export type UsersReadUsersData = {
     limit?: number;

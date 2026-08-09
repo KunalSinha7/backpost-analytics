@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column
+from sqlalchemy import Column, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
@@ -17,6 +17,16 @@ class LineupBase(SQLModel):
 
 
 class Lineup(LineupBase, table=True):
+    # Declared here as well as in the migration so the model metadata matches
+    # the database. Without it `alembic revision --autogenerate` sees a
+    # constraint the models do not know about and emits a DROP for it on every
+    # future migration — which only has to be accepted once to silently remove
+    # the guarantee.
+    __table_args__ = (
+        UniqueConstraint(
+            "match_id", "statsbomb_player_id", name="uq_lineup_match_statsbomb_player"
+        ),
+    )
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     # On the table class, not LineupBase: LineupPublic must not change shape in
     # this phase. `team_name` / `statsbomb_player_id` keep serving the API.

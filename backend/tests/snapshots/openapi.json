@@ -697,6 +697,80 @@
         "title": "PlayerPublic",
         "type": "object"
       },
+      "PlayerSeasonStats": {
+        "description": "Season stats for one player — the capability §1.3 set out to enable.\n\nBefore this, answering it meant a 4-hop string-mediated join across 376k\nunindexed rows, and minutes played were unavailable at any price because\nthey lived inside a JSON array.",
+        "properties": {
+          "appearances": {
+            "title": "Appearances",
+            "type": "integer"
+          },
+          "minutes_played": {
+            "title": "Minutes Played",
+            "type": "number"
+          },
+          "player_id": {
+            "format": "uuid",
+            "title": "Player Id",
+            "type": "string"
+          },
+          "player_name": {
+            "title": "Player Name",
+            "type": "string"
+          },
+          "season_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Season Id"
+          },
+          "stats": {
+            "items": {
+              "$ref": "#/components/schemas/PlayerStatLine"
+            },
+            "title": "Stats",
+            "type": "array"
+          }
+        },
+        "required": [
+          "player_id",
+          "player_name",
+          "appearances",
+          "minutes_played",
+          "stats"
+        ],
+        "title": "PlayerSeasonStats",
+        "type": "object"
+      },
+      "PlayerStatLine": {
+        "description": "One event type and how often the player produced it.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "per_90": {
+            "title": "Per 90",
+            "type": "number"
+          },
+          "type_name": {
+            "title": "Type Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type_name",
+          "count",
+          "per_90"
+        ],
+        "title": "PlayerStatLine",
+        "type": "object"
+      },
       "PlayersPublic": {
         "properties": {
           "count": {
@@ -2372,6 +2446,67 @@
           }
         },
         "summary": "Read Players",
+        "tags": [
+          "soccer"
+        ]
+      }
+    },
+    "/api/v1/soccer/players/{player_id}/stats": {
+      "get": {
+        "description": "Season stats for one player, with per-90 rates.\n\n`season_id` is the `season` entity's id (Phase 2), not StatsBomb's integer.\nOmit it for career totals across everything ingested.",
+        "operationId": "readPlayerSeasonStats",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "player_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Player Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "season_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Season Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerSeasonStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Player Season Stats",
         "tags": [
           "soccer"
         ]

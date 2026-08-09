@@ -26,6 +26,7 @@ from app.models.data_source import DataSource  # noqa
 from app.models.match import SoccerMatch  # noqa
 from app.models.event import Event  # noqa
 from app.models.lineup import Lineup  # noqa
+from app.models.lineup_position import LineupPosition  # noqa
 from app.models.frame360 import Frame360  # noqa
 from app.models.player import Player  # noqa
 from app.models.position import Position  # noqa
