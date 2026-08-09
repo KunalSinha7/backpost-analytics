@@ -38,6 +38,7 @@ def create_match(
         home_score=kwargs.get("home_score", 1),
         away_score=kwargs.get("away_score", 0),
         match_status_360=kwargs.get("match_status_360", None),
+        raw=kwargs.get("raw"),
     )
     db.add(match)
     db.commit()
@@ -59,7 +60,8 @@ def create_event(db: Session, match_id: uuid.UUID, **kwargs: object) -> Event:
         possession=kwargs.get("possession"),
         end_location_x=kwargs.get("end_location_x"),
         end_location_y=kwargs.get("end_location_y"),
-        raw_event={},
+        possession_team_name=kwargs.get("possession_team_name"),
+        raw_event=kwargs.get("raw_event") or {},
     )
     db.add(event)
     db.commit()
@@ -75,6 +77,7 @@ def create_lineup(db: Session, match_id: uuid.UUID, **kwargs: object) -> Lineup:
         player_name=kwargs.get("player_name", "Test Player"),
         jersey_number=kwargs.get("jersey_number", 10),
         started=kwargs.get("started", True),
+        raw=kwargs.get("raw"),
     )
     db.add(lineup)
     db.commit()

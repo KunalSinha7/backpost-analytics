@@ -14,6 +14,12 @@ class Frame360Base(SQLModel):
 class Frame360(Frame360Base, table=True):
     __tablename__ = "frame360"  # type: ignore[assignment]
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # Replaces the soft `event_statsbomb_id` join with a real FK. Both coexist
+    # until Phase 4 drops the string; Frame360Public is unchanged meanwhile.
+    # Unique because a frame describes exactly one event (§6/M4).
+    event_id: uuid.UUID | None = Field(
+        default=None, foreign_key="event.id", unique=True
+    )
 
 
 class Frame360Public(Frame360Base):

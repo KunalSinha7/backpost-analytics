@@ -23,6 +23,7 @@ class MatchService:
         competition_id: uuid.UUID | None = None,
         has_events: bool = False,
         team_name: str | None = None,
+        team_id: uuid.UUID | None = None,
     ) -> tuple[list[SoccerMatch], int, set[uuid.UUID]]:
         return self.repo.list_all(
             skip=skip,
@@ -30,6 +31,7 @@ class MatchService:
             competition_id=competition_id,
             has_events=has_events,
             team_name=team_name,
+            team_id=team_id,
         )
 
     def list_teams(

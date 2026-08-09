@@ -410,12 +410,31 @@ One query, no lazy loads. Keeping denormalized copies would re-open exactly the 
 | `event.team_id`, `possession_team_id`, `player_id`, `pass_recipient_id` | `raw_event` JSON — **100% coverage, verified** | **No** — pure SQL/Python over the existing table |
 | `soccer_match.home/away_team_id` | **`soccer_match.raw`** — populated for all 3,961 rows by `MatchService.backfill_raw` in Phase 0 | **No** — the re-fetch already happened |
 | `lineup.player_id` | `lineup.statsbomb_player_id` → `player.statsbomb_id` | No |
-| `event.position_id`, `substitution_replacement_id` | `raw_event` JSON — 100% of player events | No |
+| `event.substitution_replacement_id` | `raw_event` JSON — 2,185 rows carry it | No |
+| ~~`event.position_id`~~ **from `raw_event`** | ❌ **WRONG — corrected 2026-08-08, see below.** Source is `lineup.raw`'s `positions[]`; events resolve **by name** | No |
 | `lineup.team_id` | **`sb.lineups()` has no team id (§1.6).** `lineup.team_name` →(same match)→ `event.team` → `raw_event->>'team_id'`. Verified 3,745/3,745, 0 ambiguous. **Never against the match's teams** — that fails on the 20 Marseille rows | No |
 | `lineup_position`, `lineup.cards` | **Not in the DB at all** — `Lineup` has no raw column | **Yes** — re-run `sb.lineups()` for all 3,745 lineup rows |
 | `competition` / `season` / `competition_season` | derived from existing `competition` rows | No |
 
 The Marseille pair is the acceptance test for the backfill: after it runs, `Olympique de Marseille` and `Marseille` must resolve to **one** `team` row, and all 1,920 orphaned events must join.
+
+> #### ⚠️ CORRECTED 2026-08-08 — `raw_event` has no `position_id` at all
+>
+> The row above claimed `event.position_id` backfills from `raw_event` at "100% of player events". Probed against the live table:
+>
+> ```
+> events                                   : 1,365,934
+> events with raw_event->>'position_id'    :         0     ← the key does not exist
+> events with raw_event->>'position' (name):  1,360,418
+> ```
+>
+> statsbombpy flattens StatsBomb's nested `position: {id, name}` down to the **name alone**, so the numeric id never reaches `raw_event`. It survives only in `lineup.raw`'s `positions[]`, captured in Phase 0.
+>
+> **Corrected rule:** build the `position` vocabulary from `lineup.raw` (23 values, with real StatsBomb ids), then resolve `event.position_id` **by name**. Verified: 1,360,417 of 1,360,418 player events resolve. The single miss is one event whose position is `"Substitute"` — a status, not a position, with no id in StatsBomb's vocabulary — which correctly stays NULL.
+>
+> **Why this one mattered.** Writing `raw_event->>'position_id'` as the plan specified does not raise: the join simply matches nothing, the UPDATE reports success, and `position_id` stays NULL across the board. That is the same false-green shape §7.1a warns about, arrived at from a different direction — **a backfill that reads a key that does not exist is indistinguishable from one that had nothing to do.**
+>
+> This is the third plan claim to be wrong in its specifics (after §1.6/B0 and §6/B2). The pattern is consistent: each was plausible, each concerned data shape rather than logic, and each was caught only by querying rather than reasoning.
 
 ---
 
@@ -450,7 +469,7 @@ Ordered so the capability you actually asked for (§1.3, season stats) lands ear
 | Phase | Delivers | Risk | Key gate |
 |---|---|---|---|
 | **0. Foundations** | **Golden-response + `openapi.json` snapshot harness** (§7.1 — must land while the baseline is still trivially correct). `data_source` table. **`extra="allow"` on `_StatsBombRow` + `raw` columns on `lineup`/`soccer_match`/`competition`** (§1.5). **Re-fetch `sb.lineups()` for the 94 event-matches** — the only network-bound step in the plan. **`ix_event_match_id_index`** (§6/H2). **Fix `model_validate` relationship loss** (§6/B2). **No entity changes, and no `app/ingest/` package — see the note below.** | Low | Snapshots captured and committed; `openapi.json` unchanged; `model_validate` fix has a **failing test first**; `alembic downgrade` rehearsed; `/competitions` p95 improves |
-| **1. Identity** | `team` + `player` + `position` entities; **`team_alias`** (§6/M5); `EntityResolver`; FKs on `soccer_match`/`lineup`/`event`; one backfill pass. Additive `home_team_id`/`away_team_id` on `SoccerMatchPublic` + optional `team_id` filter params (§6/H4). **Fixes the Marseille bug.** | Medium — touches 376k rows | Marseille resolves to 1 team; all 1,920 orphaned events join; **`lineup.team_id` NULL count = 0**; distinct team count = 353; responses identical **except the enumerated drift set = {team 147}** |
+| **1. Identity** | `team` + `player` + `position` entities; **`team_alias`** (§6/M5); `EntityResolver`; FKs on `soccer_match`/`lineup`/`event`; one backfill pass. Additive `home_team_id`/`away_team_id` on `SoccerMatchPublic` + optional `team_id` filter params (§6/H4). **Fixes the Marseille bug.** | Medium — touches 376k rows | ✅ **DONE 2026-08-08.** Marseille resolves to 1 team ✓; **`lineup.team_id` NULL count = 0** ✓ (13,650/13,650); `event.team_id` NULL count = 0 ✓ (1,365,934/1,365,934); distinct team count **354** (gate said 353 — stale, see §6/H3); responses identical except drift set **{147, 140}** (gate said {147} — see §6/H3); `openapi.json` diff is **66 insertions, 0 deletions** |
 | **2. Competition split** | `competition` / `season` / `competition_season`; `competition_id` → `competition_season_id` rename churn. **In-place `ALTER` only — never DELETE/re-INSERT `competition`** (§6/B3) | Medium — 85 refs across stack | `/competitions` response unchanged; pre-flight FD assertions (§6) pass; `soccer_match` row count unchanged |
 | **3. Season stats** | `lineup_position` (minutes played); indexes from §2.2; `/players/{id}/stats?season_id=` endpoint | Low | **Per-90 for a known player matches a hand-computed value** — not just raw counts |
 | **4. Contract** | Drop the redundant name columns; `NOT NULL` the FKs. **The `statsbomb_id` → `external_id` rename is CUT from this plan** (§6/H1) | Low-medium | Full test suite + `openapi.json` diff + manual UI pass |
@@ -558,6 +577,24 @@ Independent adversarial review. **Every factual claim below was re-verified agai
 
   **Lesson to carry into later phases:** an index the planner *uses* is not the same as an index that makes the query *fast*. `EXPLAIN` proudly showed `Index Only Scan using ix_event_match_id_index` while the statement took 14 seconds. **Verify perf gates by timing, not by grepping the plan for an index name.**
 - **H3 — "byte-identical responses" is unachievable as a gate.** `read_events(team=...)` filters *event*-feed vocabulary while the dropdown is populated from *match*-feed vocabulary — **already broken for Marseille**; fixing it necessarily changes the response. ✅ **Gate restated** as "identical except the enumerated drift set = {team 147}". Also adds: assert distinct team count == 353 after the `sb.matches()` backfill, and set the tie-break explicitly — **match-feed name wins** (it is what the API emits today).
+
+  > **MEASURED 2026-08-08 — both numbers in this finding were stale, and the drift is worse than described.**
+  >
+  > | Gate as written | Actual | Why |
+  > |---|---|---|
+  > | drift set = `{147}` | **`{147, 140}`** | `Stade Malherbe Caen` / `Caen` has the identical split. Found by querying `team_alias`, not by inspection |
+  > | distinct teams = 353 | **354** | The 353 predates the fuller Ligue 1 ingest |
+  >
+  > **The failure mode was also mis-stated.** H3 implies the event feed uses one spelling and the match feed another. It does not — the *event feed itself* uses both, depending on the match:
+  >
+  > ```
+  > team 147  "Olympique de Marseille"  54,977 events   (27 matches, home and away)
+  > team 147  "Marseille"               20,742 events   (11 matches, away only)
+  > ```
+  >
+  > So the old string filter did not return *nothing* for the affected teams — it returned a **partial set**, silently dropping 20,742 events. An empty result gets reported as a bug; a plausible-looking short one does not. Confirmed end-to-end on a real away match: filtering by the dropdown's `"Olympique de Marseille"` returned **0** of that match's 2,159 Marseille events before, and all 2,159 after.
+  >
+  > **Consequence for the implementation:** the team filter ORs the resolved-id clause with the original name clause rather than replacing it. A straight swap would hide every event still carrying a NULL `team_id`, which is exactly the population a partial backfill leaves behind.
 - **H4 — Phase 1 ships nothing visible.** ✅ Added *additive* `home_team_id`/`away_team_id` to `SoccerMatchPublic` and optional `team_id` filter params. No frontend change required; the phase becomes demonstrable.
 
 ### Medium

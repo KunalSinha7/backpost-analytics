@@ -812,6 +812,18 @@
             ],
             "title": "Away Team Group"
           },
+          "away_team_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Away Team Id"
+          },
           "competition_id": {
             "format": "uuid",
             "title": "Competition Id",
@@ -897,6 +909,18 @@
               }
             ],
             "title": "Home Team Group"
+          },
+          "home_team_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Home Team Id"
           },
           "id": {
             "format": "uuid",
@@ -1896,6 +1920,23 @@
               ],
               "title": "Possession"
             }
+          },
+          {
+            "in": "query",
+            "name": "team_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Team Id"
+            }
           }
         ],
         "responses": {
@@ -2159,6 +2200,23 @@
                 }
               ],
               "title": "Team Name"
+            }
+          },
+          {
+            "in": "query",
+            "name": "team_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Team Id"
             }
           }
         ],

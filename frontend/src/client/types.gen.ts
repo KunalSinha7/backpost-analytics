@@ -160,6 +160,8 @@ export type SoccerMatchPublic = {
     match_status?: (string | null);
     last_updated?: (string | null);
     match_status_360?: (string | null);
+    home_team_id?: (string | null);
+    away_team_id?: (string | null);
     id: string;
     has_events?: boolean;
 };
@@ -288,6 +290,7 @@ export type ReadMatchesData = {
     hasEvents?: boolean;
     limit?: number;
     skip?: number;
+    teamId?: (string | null);
     teamName?: (string | null);
 };
 
@@ -308,6 +311,7 @@ export type ReadEventsData = {
     possession?: (number | null);
     skip?: number;
     team?: (string | null);
+    teamId?: (string | null);
     typeName?: (string | null);
 };
 
