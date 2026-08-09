@@ -4,6 +4,7 @@ from typing import Any
 
 from sqlmodel import Session, select
 
+from app.models.competition import Competition, Season
 from app.models.data_source import DataSource
 from app.models.player import Player
 from app.models.position import Position
@@ -72,6 +73,8 @@ class EntityResolver:
         self._team_cache: dict[str, Team] = {}
         self._player_cache: dict[str, Player] = {}
         self._position_cache: dict[str, Position] = {}
+        self._competition_cache: dict[str, Competition] = {}
+        self._season_cache: dict[str, Season] = {}
 
     def _get_or_create_source(self, key: str) -> DataSource:
         source = self.session.exec(
@@ -154,6 +157,67 @@ class EntityResolver:
             self.session.flush()
         self._position_cache[key] = position
         return position
+
+    def resolve_competition(
+        self,
+        external_id: Any,
+        name: str,
+        *,
+        country_name: str,
+        gender: str,
+        is_youth: bool = False,
+        is_international: bool = False,
+    ) -> Competition | None:
+        """Get-or-create the TIMELESS competition (La Liga, not La Liga 18/19).
+
+        Keyed on StatsBomb's `competition_id`, which is timeless by design —
+        `11` is La Liga across all 18 seasons. Deduplicating on it is what
+        collapses the 80 edition rows into 24 competitions and removes the 2NF
+        violation in §1.1.
+        """
+        key = normalize_external_id(external_id)
+        if key is None:
+            return None
+        competition = self._competition_cache.get(key)
+        if competition is None:
+            competition = self.session.exec(
+                select(Competition).where(
+                    Competition.source_id == self.source.id,
+                    Competition.external_id == key,
+                )
+            ).first()
+        if competition is None:
+            competition = Competition(
+                source_id=self.source.id,
+                external_id=key,
+                name=name,
+                country_name=country_name,
+                gender=gender,
+                is_youth=is_youth,
+                is_international=is_international,
+            )
+            self.session.add(competition)
+            self.session.flush()
+        self._competition_cache[key] = competition
+        return competition
+
+    def resolve_season(self, external_id: Any, name: str) -> Season | None:
+        key = normalize_external_id(external_id)
+        if key is None:
+            return None
+        season = self._season_cache.get(key)
+        if season is None:
+            season = self.session.exec(
+                select(Season).where(
+                    Season.source_id == self.source.id, Season.external_id == key
+                )
+            ).first()
+        if season is None:
+            season = Season(source_id=self.source.id, external_id=key, name=name)
+            self.session.add(season)
+            self.session.flush()
+        self._season_cache[key] = season
+        return season
 
     def attach_player_source(self, player: Player) -> None:
         """Stamp an existing player row with its source columns.

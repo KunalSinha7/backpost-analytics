@@ -17,7 +17,7 @@ def read_matches(
     session: SessionDep,
     skip: int = 0,
     limit: int = 100,
-    competition_id: uuid.UUID | None = None,
+    competition_season_id: uuid.UUID | None = None,
     has_events: bool = False,
     team_name: str | None = None,
     team_id: uuid.UUID | None = None,
@@ -25,7 +25,7 @@ def read_matches(
     rows, count, has_events_ids = MatchService(session).list_matches(
         skip=skip,
         limit=limit,
-        competition_id=competition_id,
+        competition_season_id=competition_season_id,
         has_events=has_events,
         team_name=team_name,
         team_id=team_id,
@@ -44,10 +44,10 @@ def read_matches(
 @router.get("/teams", response_model=SoccerTeamsPublic, operation_id="readMatchTeams")
 def read_match_teams(
     session: SessionDep,
-    competition_id: uuid.UUID | None = None,
+    competition_season_id: uuid.UUID | None = None,
     has_events: bool = False,
 ) -> Any:
     teams = MatchService(session).list_teams(
-        competition_id=competition_id, has_events=has_events
+        competition_season_id=competition_season_id, has_events=has_events
     )
     return SoccerTeamsPublic(data=teams)

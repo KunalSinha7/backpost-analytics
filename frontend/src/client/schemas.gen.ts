@@ -704,10 +704,10 @@ export const SoccerMatchPublicSchema = {
             type: 'integer',
             title: 'Statsbomb Id'
         },
-        competition_id: {
+        competition_season_id: {
             type: 'string',
             format: 'uuid',
-            title: 'Competition Id'
+            title: 'Competition Season Id'
         },
         match_date: {
             type: 'string',
@@ -973,7 +973,7 @@ export const SoccerMatchPublicSchema = {
         }
     },
     type: 'object',
-    required: ['statsbomb_id', 'competition_id', 'match_date', 'home_team', 'away_team', 'id'],
+    required: ['statsbomb_id', 'competition_season_id', 'match_date', 'home_team', 'away_team', 'id'],
     title: 'SoccerMatchPublic'
 } as const;
 

@@ -2,8 +2,9 @@ import logging
 
 from sqlmodel import Session
 
-from app.models.competition import Competition
+from app.models.competition import CompetitionSeason
 from app.repositories.competition import CompetitionRepository
+from app.services.resolver import EntityResolver
 from app.utils.statsbomb import StatsBombCompetitionRow
 
 logger = logging.getLogger(__name__)
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 class CompetitionService:
     def __init__(self, session: Session) -> None:
         self.repo = CompetitionRepository(session)
+        self.resolver = EntityResolver(session)
 
     def list_competitions(
         self,
@@ -19,24 +21,24 @@ class CompetitionService:
         limit: int = 100,
         has_matches: bool = False,
         has_events: bool = False,
-    ) -> tuple[list[tuple[Competition, int]], int]:
+    ) -> tuple[list[tuple[CompetitionSeason, int]], int]:
         return self.repo.list_all(
             skip=skip, limit=limit, has_matches=has_matches, has_events=has_events
         )
 
-    def ingest(self) -> tuple[int, list[Competition]]:
+    def ingest(self) -> tuple[int, list[CompetitionSeason]]:
         from statsbombpy import sb  # type: ignore[import-untyped]
 
         existing = self.repo.get_existing_keys()
         imported = 0
-        all_competitions: list[Competition] = []
+        all_competitions: list[CompetitionSeason] = []
 
         for _, row in sb.competitions().iterrows():
             comp_row = StatsBombCompetitionRow.model_validate(row.to_dict())
             cid, sid = comp_row.competition_id, comp_row.season_id
 
             if (cid, sid) not in existing:
-                comp = Competition(
+                comp = CompetitionSeason(
                     statsbomb_id=cid,
                     season_id=sid,
                     country_name=comp_row.country_name,
@@ -51,6 +53,21 @@ class CompetitionService:
                     match_available_360=comp_row.match_available_360,
                     raw=comp_row.model_dump(),
                 )
+                # Resolved at ingest, not left to the backfill. A backfill is
+                # one-shot; if ingest does not populate the FKs then every
+                # newly ingested edition arrives unlinked and the split decays
+                # from the first import onward (§6/M1).
+                competition = self.resolver.resolve_competition(
+                    cid,
+                    comp_row.competition_name,
+                    country_name=comp_row.country_name,
+                    gender=comp_row.competition_gender,
+                    is_youth=comp_row.competition_youth,
+                    is_international=comp_row.competition_international,
+                )
+                season = self.resolver.resolve_season(sid, comp_row.season_name)
+                comp.competition_id = competition.id if competition else None
+                comp.season_ref_id = season.id if season else None
                 self.repo.add(comp)
                 existing.add((cid, sid))
                 imported += 1

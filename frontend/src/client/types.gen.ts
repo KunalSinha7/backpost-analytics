@@ -138,7 +138,7 @@ export type SoccerMatchesPublic = {
 
 export type SoccerMatchPublic = {
     statsbomb_id: number;
-    competition_id: string;
+    competition_season_id: string;
     match_date: string;
     kick_off?: (string | null);
     home_team: string;
@@ -286,7 +286,7 @@ export type IngestSoccerDataResponse = (IngestResult);
 export type GetAvailableCompetitionsResponse = (Array<StatsBombCompetition>);
 
 export type ReadMatchesData = {
-    competitionId?: (string | null);
+    competitionSeasonId?: (string | null);
     hasEvents?: boolean;
     limit?: number;
     skip?: number;
@@ -297,7 +297,7 @@ export type ReadMatchesData = {
 export type ReadMatchesResponse = (SoccerMatchesPublic);
 
 export type ReadMatchTeamsData = {
-    competitionId?: (string | null);
+    competitionSeasonId?: (string | null);
     hasEvents?: boolean;
 };
 

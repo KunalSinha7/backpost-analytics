@@ -17,13 +17,13 @@ import {
 import { useTablePageSize } from "@/hooks/useTablePageSize"
 
 interface MatchTableProps {
-  initialCompetitionId?: string
+  initialCompetitionSeasonId?: string
 }
 
-export function MatchTable({ initialCompetitionId }: MatchTableProps) {
+export function MatchTable({ initialCompetitionSeasonId }: MatchTableProps) {
   const navigate = useNavigate()
   const [competitionFilter, setCompetitionFilter] = useState(
-    initialCompetitionId ?? "all",
+    initialCompetitionSeasonId ?? "all",
   )
   const [teamSearch, setTeamSearch] = useState("")
   const [committedTeamSearch, setCommittedTeamSearch] = useState("")
@@ -47,7 +47,7 @@ export function MatchTable({ initialCompetitionId }: MatchTableProps) {
       SoccerService.readMatches({
         skip: page * pageSize,
         limit: pageSize,
-        competitionId:
+        competitionSeasonId:
           competitionFilter === "all" ? undefined : competitionFilter,
         teamName: committedTeamSearch || undefined,
       }),
@@ -184,7 +184,7 @@ export function MatchTable({ initialCompetitionId }: MatchTableProps) {
           navigate({
             to: "/soccer/visualize",
             search: {
-              competitionId: match.competition_id,
+              competitionSeasonId: match.competition_season_id,
               teamName: undefined,
               matchId: match.id,
               possession: undefined,

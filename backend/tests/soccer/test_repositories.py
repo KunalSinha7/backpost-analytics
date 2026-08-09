@@ -173,9 +173,9 @@ def test_match_list_all_filter_by_competition(db: Session) -> None:
     comp = create_competition(db, statsbomb_id=2002, season_id=2002)
     create_match(db, comp.id, statsbomb_id=20002)
     repo = MatchRepository(db)
-    rows, count, _ = repo.list_all(competition_id=comp.id)
+    rows, count, _ = repo.list_all(competition_season_id=comp.id)
     assert count >= 1
-    assert all(m.competition_id == comp.id for m in rows)
+    assert all(m.competition_season_id == comp.id for m in rows)
 
 
 def test_match_list_all_has_events_filter(db: Session) -> None:
@@ -222,7 +222,7 @@ def test_match_list_distinct_teams(db: Session) -> None:
         db, comp.id, statsbomb_id=20008, home_team="Delta FC", away_team="Epsilon City"
     )
     repo = MatchRepository(db)
-    teams = repo.list_distinct_teams(competition_id=comp.id)
+    teams = repo.list_distinct_teams(competition_season_id=comp.id)
     assert teams == ["Delta FC", "Epsilon City", "Gamma United"]
 
 
@@ -236,7 +236,7 @@ def test_match_list_distinct_teams_filter_by_competition(db: Session) -> None:
         db, comp_b.id, statsbomb_id=20010, home_team="Theta B", away_team="Iota B"
     )
     repo = MatchRepository(db)
-    teams = repo.list_distinct_teams(competition_id=comp_a.id)
+    teams = repo.list_distinct_teams(competition_season_id=comp_a.id)
     assert "Zeta A" in teams
     assert "Eta A" in teams
     assert "Theta B" not in teams
@@ -251,7 +251,7 @@ def test_match_list_distinct_teams_has_events_filter(db: Session) -> None:
     create_event(db, match_with.id)
 
     repo = MatchRepository(db)
-    teams = repo.list_distinct_teams(competition_id=comp.id, has_events=True)
+    teams = repo.list_distinct_teams(competition_season_id=comp.id, has_events=True)
     assert teams == ["Kappa FC", "Lambda FC"]
 
 

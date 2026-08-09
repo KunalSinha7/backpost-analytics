@@ -4,7 +4,7 @@ from sqlalchemy import func
 from sqlmodel import Session, col, select
 
 from app.exceptions.competition import CompetitionNotFoundError
-from app.models.competition import Competition
+from app.models.competition import CompetitionSeason
 
 
 class CompetitionRepository:
@@ -17,7 +17,7 @@ class CompetitionRepository:
         limit: int = 100,
         has_matches: bool = False,
         has_events: bool = False,
-    ) -> tuple[list[tuple[Competition, int]], int]:
+    ) -> tuple[list[tuple[CompetitionSeason, int]], int]:
         from app.models.event import Event
         from app.models.match import SoccerMatch
 
@@ -33,15 +33,19 @@ class CompetitionRepository:
             return (
                 select(col(SoccerMatch.id))
                 .join(Event, col(Event.match_id) == col(SoccerMatch.id))
-                .where(col(SoccerMatch.competition_id) == col(Competition.id))
+                .where(
+                    col(SoccerMatch.competition_season_id) == col(CompetitionSeason.id)
+                )
                 .exists()
             )
 
-        count_stmt = select(func.count()).select_from(Competition)
+        count_stmt = select(func.count()).select_from(CompetitionSeason)
         if has_matches:
             match_exists = (
                 select(col(SoccerMatch.id))
-                .where(col(SoccerMatch.competition_id) == col(Competition.id))
+                .where(
+                    col(SoccerMatch.competition_season_id) == col(CompetitionSeason.id)
+                )
                 .exists()
             )
             count_stmt = count_stmt.where(match_exists)
@@ -50,13 +54,15 @@ class CompetitionRepository:
         count = self.session.exec(count_stmt).one()
 
         stmt = (
-            select(Competition, func.count(col(SoccerMatch.id)).label("match_count"))
+            select(
+                CompetitionSeason, func.count(col(SoccerMatch.id)).label("match_count")
+            )
             .outerjoin(
                 SoccerMatch,
-                col(SoccerMatch.competition_id) == col(Competition.id),
+                col(SoccerMatch.competition_season_id) == col(CompetitionSeason.id),
             )
-            .group_by(col(Competition.id))
-            .order_by(col(Competition.competition_name))
+            .group_by(col(CompetitionSeason.id))
+            .order_by(col(CompetitionSeason.competition_name))
             .offset(skip)
             .limit(limit)
         )
@@ -66,27 +72,29 @@ class CompetitionRepository:
             stmt = stmt.where(_events_exist_clause())
 
         rows = self.session.exec(stmt).all()
-        # Hand back the session-attached ORM row as-is. `Competition.model_validate`
+        # Hand back the session-attached ORM row as-is. `CompetitionSeason.model_validate`
         # would build a detached copy, dropping it out of the identity map and
-        # walking `Competition.matches` on the way — one extra query per row.
+        # walking `CompetitionSeason.matches` on the way — one extra query per row.
         return [(competition, match_count) for competition, match_count in rows], count
 
     def get_existing_keys(self) -> set[tuple[int, int]]:
         return {
             (c.statsbomb_id, c.season_id)
-            for c in self.session.exec(select(Competition)).all()
+            for c in self.session.exec(select(CompetitionSeason)).all()
         }
 
-    def get_by_statsbomb_key(self, statsbomb_id: int, season_id: int) -> Competition:
+    def get_by_statsbomb_key(
+        self, statsbomb_id: int, season_id: int
+    ) -> CompetitionSeason:
         row = self.session.exec(
-            select(Competition).where(
-                Competition.statsbomb_id == statsbomb_id,
-                Competition.season_id == season_id,
+            select(CompetitionSeason).where(
+                CompetitionSeason.statsbomb_id == statsbomb_id,
+                CompetitionSeason.season_id == season_id,
             )
         ).first()
         if row is None:
             raise CompetitionNotFoundError(statsbomb_id, season_id)
         return row
 
-    def add(self, competition: Competition) -> None:
+    def add(self, competition: CompetitionSeason) -> None:
         self.session.add(competition)
