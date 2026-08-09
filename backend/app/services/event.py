@@ -40,6 +40,7 @@ class EventService:
         period: int | None = None,
         player: str | None = None,
         possession: int | None = None,
+        team_id: uuid.UUID | None = None,
     ) -> tuple[list[Event], int]:
         return self.event_repo.list_by_match(
             match_id,
@@ -50,6 +51,7 @@ class EventService:
             period=period,
             player=player,
             possession=possession,
+            team_id=team_id,
         )
 
     def ingest_for_competition(

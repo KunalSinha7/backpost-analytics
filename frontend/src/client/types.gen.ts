@@ -290,6 +290,7 @@ export type ReadMatchesData = {
     hasEvents?: boolean;
     limit?: number;
     skip?: number;
+    teamId?: (string | null);
     teamName?: (string | null);
 };
 
@@ -310,6 +311,7 @@ export type ReadEventsData = {
     possession?: (number | null);
     skip?: number;
     team?: (string | null);
+    teamId?: (string | null);
     typeName?: (string | null);
 };
 

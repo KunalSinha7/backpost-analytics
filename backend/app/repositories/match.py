@@ -24,12 +24,23 @@ class MatchRepository:
         competition_id: uuid.UUID | None = None,
         has_events: bool = False,
         team_name: str | None = None,
+        team_id: uuid.UUID | None = None,
     ) -> tuple[list[SoccerMatch], int, set[uuid.UUID]]:
         stmt = select(SoccerMatch)
         count_stmt = select(func.count()).select_from(SoccerMatch)
         if competition_id is not None:
             stmt = stmt.where(SoccerMatch.competition_id == competition_id)
             count_stmt = count_stmt.where(SoccerMatch.competition_id == competition_id)
+        if team_id is not None:
+            # Exact, unlike the ILIKE `team_name` search below: an id either is
+            # or is not this match's team, with no substring ambiguity — which
+            # is the point of exposing it (§6/H4).
+            id_filter = or_(
+                SoccerMatch.home_team_id == team_id,
+                SoccerMatch.away_team_id == team_id,
+            )
+            stmt = stmt.where(id_filter)
+            count_stmt = count_stmt.where(id_filter)
         if team_name is not None:
             words = team_name.strip().split()
             if words:

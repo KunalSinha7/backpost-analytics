@@ -178,6 +178,7 @@ export class SoccerService {
      * @param data.competitionId
      * @param data.hasEvents
      * @param data.teamName
+     * @param data.teamId
      * @returns SoccerMatchesPublic Successful Response
      * @throws ApiError
      */
@@ -190,7 +191,8 @@ export class SoccerService {
                 limit: data.limit,
                 competition_id: data.competitionId,
                 has_events: data.hasEvents,
-                team_name: data.teamName
+                team_name: data.teamName,
+                team_id: data.teamId
             },
             errors: {
                 422: 'Validation Error'
@@ -231,6 +233,7 @@ export class SoccerService {
      * @param data.period
      * @param data.player
      * @param data.possession
+     * @param data.teamId
      * @returns EventsPublic Successful Response
      * @throws ApiError
      */
@@ -246,7 +249,8 @@ export class SoccerService {
                 team: data.team,
                 period: data.period,
                 player: data.player,
-                possession: data.possession
+                possession: data.possession,
+                team_id: data.teamId
             },
             errors: {
                 422: 'Validation Error'

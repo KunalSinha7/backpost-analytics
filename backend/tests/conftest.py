@@ -15,6 +15,8 @@ from app.models.event import Event
 from app.models.frame360 import Frame360
 from app.models.lineup import Lineup
 from app.models.match import SoccerMatch
+from app.models.position import Position
+from app.models.team import Team, TeamAlias
 from app.repositories.user import create_user as _original_create_user
 from tests.utils.user import authentication_token_from_email
 from tests.utils.utils import get_superuser_token_headers
@@ -52,6 +54,13 @@ def _wipe_soccer_data(session: Session) -> None:
     session.execute(delete(Lineup))
     session.execute(delete(SoccerMatch))
     session.execute(delete(Competition))
+    # After the rows that reference them. Teams and positions are wiped for the
+    # same reason as everything above, plus one specific to them: they carry
+    # UNIQUE(source_id, external_id), so a leaked row from a previous run makes
+    # the next resolver test fail on a constraint rather than on its assertion.
+    session.execute(delete(TeamAlias))
+    session.execute(delete(Team))
+    session.execute(delete(Position))
     session.commit()
 
 

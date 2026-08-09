@@ -20,6 +20,7 @@ def read_matches(
     competition_id: uuid.UUID | None = None,
     has_events: bool = False,
     team_name: str | None = None,
+    team_id: uuid.UUID | None = None,
 ) -> Any:
     rows, count, has_events_ids = MatchService(session).list_matches(
         skip=skip,
@@ -27,6 +28,7 @@ def read_matches(
         competition_id=competition_id,
         has_events=has_events,
         team_name=team_name,
+        team_id=team_id,
     )
     return SoccerMatchesPublic(
         data=[
