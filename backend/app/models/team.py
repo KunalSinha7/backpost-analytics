@@ -1,5 +1,6 @@
 import uuid
 
+from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -11,6 +12,14 @@ class Team(SQLModel, table=True):
     weight. Same reasoning as `DataSource`.
     """
 
+    # Declared here as well as in the migration so the model metadata matches
+    # the database. Without it `alembic revision --autogenerate` sees a
+    # constraint the models do not know about and emits a DROP for it on every
+    # future migration — which only has to be accepted once to silently remove
+    # the guarantee.
+    __table_args__ = (
+        UniqueConstraint("source_id", "external_id", name="uq_team_source_ext"),
+    )
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     source_id: uuid.UUID = Field(foreign_key="data_source.id", index=True)
     # varchar, not int: sources use ints, uuids and opaque strings. Paired with
@@ -38,6 +47,11 @@ class TeamAlias(SQLModel, table=True):
     """
 
     __tablename__ = "team_alias"  # type: ignore[assignment]
+    __table_args__ = (
+        UniqueConstraint(
+            "team_id", "source_id", "name", name="uq_team_alias_team_source_name"
+        ),
+    )
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     team_id: uuid.UUID = Field(foreign_key="team.id", index=True)
     source_id: uuid.UUID = Field(foreign_key="data_source.id", index=True)

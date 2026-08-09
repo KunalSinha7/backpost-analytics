@@ -654,6 +654,76 @@ export const PlayerPublicSchema = {
     title: 'PlayerPublic'
 } as const;
 
+export const PlayerSeasonStatsSchema = {
+    properties: {
+        player_id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Player Id'
+        },
+        player_name: {
+            type: 'string',
+            title: 'Player Name'
+        },
+        season_id: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'uuid'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Season Id'
+        },
+        appearances: {
+            type: 'integer',
+            title: 'Appearances'
+        },
+        minutes_played: {
+            type: 'number',
+            title: 'Minutes Played'
+        },
+        stats: {
+            items: {
+                '$ref': '#/components/schemas/PlayerStatLine'
+            },
+            type: 'array',
+            title: 'Stats'
+        }
+    },
+    type: 'object',
+    required: ['player_id', 'player_name', 'appearances', 'minutes_played', 'stats'],
+    title: 'PlayerSeasonStats',
+    description: `Season stats for one player — the capability §1.3 set out to enable.
+
+Before this, answering it meant a 4-hop string-mediated join across 376k
+unindexed rows, and minutes played were unavailable at any price because
+they lived inside a JSON array.`
+} as const;
+
+export const PlayerStatLineSchema = {
+    properties: {
+        type_name: {
+            type: 'string',
+            title: 'Type Name'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        },
+        per_90: {
+            type: 'number',
+            title: 'Per 90'
+        }
+    },
+    type: 'object',
+    required: ['type_name', 'count', 'per_90'],
+    title: 'PlayerStatLine',
+    description: 'One event type and how often the player produced it.'
+} as const;
+
 export const PlayersPublicSchema = {
     properties: {
         data: {
