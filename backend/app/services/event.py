@@ -41,7 +41,7 @@ class EventService:
         player: str | None = None,
         possession: int | None = None,
         team_id: uuid.UUID | None = None,
-    ) -> tuple[list[Event], int]:
+    ) -> tuple[list[Event], int, dict[uuid.UUID, str]]:
         return self.event_repo.list_by_match(
             match_id,
             skip=skip,
@@ -95,15 +95,11 @@ class EventService:
                     second=event_row.second,
                     type_name=event_row.type or "",
                     possession=event_row.possession,
-                    possession_team_name=event_row.possession_team,
                     play_pattern_name=event_row.play_pattern,
-                    team=event_row.team or "",
-                    player=event_row.player,
                     location_x=event_row.location[0] if event_row.location else None,
                     location_y=event_row.location[1] if event_row.location else None,
                     end_location_x=end_location_x,
                     end_location_y=end_location_y,
-                    pass_recipient=pass_recipient,
                     duration=event_row.duration,
                     under_pressure=event_row.under_pressure,
                     off_camera=event_row.off_camera,

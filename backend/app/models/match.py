@@ -23,8 +23,6 @@ class SoccerMatchBase(SQLModel):
     )
     match_date: str = Field(max_length=20)
     kick_off: str | None = Field(default=None, max_length=20)
-    home_team: str = Field(max_length=255)
-    away_team: str = Field(max_length=255)
     home_score: int | None = None
     away_score: int | None = None
     stadium: str | None = Field(default=None, max_length=255)
@@ -42,19 +40,13 @@ class SoccerMatchBase(SQLModel):
     match_status: str | None = Field(default=None, max_length=50)
     last_updated: str | None = Field(default=None, max_length=50)
     match_status_360: str | None = Field(default=None, max_length=50)
-    # On the Base, and therefore on SoccerMatchPublic, deliberately: this is the
-    # one additive API change in Phase 1 (§6/H4), so the phase ships something
-    # callable instead of being pure plumbing. `home_team`/`away_team` keep
-    # emitting the same strings alongside, so no frontend code has to change.
-    #
-    # Nullable through expand+backfill; Phase 4 sets NOT NULL and drops the
-    # string columns.
-    home_team_id: uuid.UUID | None = Field(
-        default=None, foreign_key="team.id", index=True
-    )
-    away_team_id: uuid.UUID | None = Field(
-        default=None, foreign_key="team.id", index=True
-    )
+    # NOT NULL as of Phase 4 — verified 0 nulls across all 3,961 rows before the
+    # constraint was applied. Team identity now lives in one place; the
+    # `home_team`/`away_team` strings that used to sit beside these are gone
+    # from the table and are resolved for the API instead (see
+    # SoccerMatchPublic).
+    home_team_id: uuid.UUID = Field(foreign_key="team.id", index=True)
+    away_team_id: uuid.UUID = Field(foreign_key="team.id", index=True)
 
 
 class SoccerMatch(SoccerMatchBase, table=True):
@@ -72,8 +64,43 @@ class SoccerMatch(SoccerMatchBase, table=True):
 
 
 class SoccerMatchPublic(SoccerMatchBase):
+    """The API contract, unchanged — but no longer backed by stored strings.
+
+    §3's rule is that the strings leave the *tables*, not the *API*. These two
+    fields used to be columns on `soccer_match`, duplicated on every one of the
+    3,961 rows and free to drift from `team.name` — which is exactly how the
+    Marseille bug happened. They are now resolved through `home_team_id` /
+    `away_team_id` by the repository, which selects them as labelled columns in
+    the same query rather than traversing a relationship.
+    """
+
     id: uuid.UUID
+    home_team: str
+    away_team: str
     has_events: bool = False
+
+    @classmethod
+    def from_row(
+        cls,
+        match: "SoccerMatch",
+        home_team: str,
+        away_team: str,
+        *,
+        has_events: bool = False,
+    ) -> "SoccerMatchPublic":
+        """Build the response from a row plus its joined team names.
+
+        Explicit rather than `model_validate(match)`: the names are no longer
+        attributes of the row, so validation would fail on two required fields.
+        `raw` is excluded because it is table-only — it holds the whole source
+        payload and has never been part of the contract.
+        """
+        return cls(
+            **match.model_dump(exclude={"raw"}),
+            home_team=home_team,
+            away_team=away_team,
+            has_events=has_events,
+        )
 
 
 class SoccerMatchesPublic(SQLModel):

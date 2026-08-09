@@ -14,15 +14,11 @@ class EventBase(SQLModel):
     second: int
     type_name: str = Field(max_length=100)
     possession: int | None = None
-    possession_team_name: str | None = Field(default=None, max_length=255)
     play_pattern_name: str | None = Field(default=None, max_length=100)
-    team: str = Field(max_length=255)
-    player: str | None = Field(default=None, max_length=255)
     location_x: float | None = None
     location_y: float | None = None
     end_location_x: float | None = None
     end_location_y: float | None = None
-    pass_recipient: str | None = Field(default=None, max_length=255)
     duration: float | None = None
     under_pressure: bool | None = None
     off_camera: bool | None = None
@@ -50,8 +46,12 @@ class Event(EventBase, table=True):
     # season-stats query in Phase 3; single-column indexes here would be
     # redundant with those (same leading column) and would have to be dropped
     # again. Same reasoning that made ix_event_match_id_index composite.
-    team_id: uuid.UUID | None = Field(default=None, foreign_key="team.id")
-    possession_team_id: uuid.UUID | None = Field(default=None, foreign_key="team.id")
+    # NOT NULL as of Phase 4 — 0 nulls across all 1,365,934 rows. player_id
+    # and pass_recipient_id stay nullable: 5,516 events (Half Start, Half End
+    # and friends) genuinely have no player, and forcing a value there would
+    # mean inventing one.
+    team_id: uuid.UUID = Field(foreign_key="team.id")
+    possession_team_id: uuid.UUID = Field(foreign_key="team.id")
     player_id: uuid.UUID | None = Field(default=None, foreign_key="player.id")
     pass_recipient_id: uuid.UUID | None = Field(default=None, foreign_key="player.id")
     position_id: uuid.UUID | None = Field(default=None, foreign_key="position.id")
@@ -61,7 +61,47 @@ class Event(EventBase, table=True):
 
 
 class EventPublic(EventBase):
+    """The API contract, unchanged — names resolved rather than stored.
+
+    §6 warns specifically about this path: `read_events` defaults to
+    `limit=10000`, so resolving these through ORM relationships would mean up
+    to four lazy loads per row. The service instead builds one id -> name map
+    per match (at most two teams and a few dozen players) and maps in memory.
+    """
+
     id: uuid.UUID
+    team: str
+    player: str | None = None
+    pass_recipient: str | None = None
+    possession_team_name: str | None = None
+
+    @classmethod
+    def from_row(
+        cls,
+        event: "Event",
+        names: "dict[uuid.UUID, str]",
+    ) -> "EventPublic":
+        return cls(
+            **event.model_dump(
+                exclude={
+                    "raw_event",
+                    "team_id",
+                    "possession_team_id",
+                    "player_id",
+                    "pass_recipient_id",
+                    "position_id",
+                    "substitution_replacement_id",
+                }
+            ),
+            team=names.get(event.team_id, ""),
+            player=names.get(event.player_id) if event.player_id else None,
+            pass_recipient=(
+                names.get(event.pass_recipient_id) if event.pass_recipient_id else None
+            ),
+            possession_team_name=(
+                names.get(event.possession_team_id) if event.possession_team_id else None
+            ),
+        )
 
 
 class EventsPublic(SQLModel):

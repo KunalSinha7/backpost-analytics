@@ -32,10 +32,13 @@ def read_matches(
     )
     return SoccerMatchesPublic(
         data=[
-            SoccerMatchPublic.model_validate(r).model_copy(
-                update={"has_events": r.id in has_events_ids}
+            SoccerMatchPublic.from_row(
+                match,
+                home_team,
+                away_team,
+                has_events=match.id in has_events_ids,
             )
-            for r in rows
+            for match, home_team, away_team in rows
         ],
         count=count,
     )
