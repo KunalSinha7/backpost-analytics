@@ -824,9 +824,9 @@
             ],
             "title": "Away Team Id"
           },
-          "competition_id": {
+          "competition_season_id": {
             "format": "uuid",
-            "title": "Competition Id",
+            "title": "Competition Season Id",
             "type": "string"
           },
           "competition_stage_name": {
@@ -1022,7 +1022,7 @@
         },
         "required": [
           "statsbomb_id",
-          "competition_id",
+          "competition_season_id",
           "match_date",
           "home_team",
           "away_team",
@@ -2161,7 +2161,7 @@
           },
           {
             "in": "query",
-            "name": "competition_id",
+            "name": "competition_season_id",
             "required": false,
             "schema": {
               "anyOf": [
@@ -2173,7 +2173,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Competition Id"
+              "title": "Competition Season Id"
             }
           },
           {
@@ -2254,7 +2254,7 @@
         "parameters": [
           {
             "in": "query",
-            "name": "competition_id",
+            "name": "competition_season_id",
             "required": false,
             "schema": {
               "anyOf": [
@@ -2266,7 +2266,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Competition Id"
+              "title": "Competition Season Id"
             }
           },
           {

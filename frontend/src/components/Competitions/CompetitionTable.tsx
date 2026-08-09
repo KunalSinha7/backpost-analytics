@@ -59,7 +59,7 @@ export function CompetitionTable() {
             onClick={() =>
               navigate({
                 to: "/soccer/matches",
-                search: { competitionId: row.original.id },
+                search: { competitionSeasonId: row.original.id },
               })
             }
             className="font-medium text-left hover:underline hover:text-primary cursor-pointer"

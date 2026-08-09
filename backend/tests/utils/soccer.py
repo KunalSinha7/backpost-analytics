@@ -2,15 +2,20 @@ import uuid
 
 from sqlmodel import Session
 
-from app.models.competition import Competition
+from app.models.competition import CompetitionSeason
 from app.models.event import Event
 from app.models.frame360 import Frame360
 from app.models.lineup import Lineup
 from app.models.match import SoccerMatch
 
 
-def create_competition(db: Session, **kwargs: object) -> Competition:
-    comp = Competition(
+def create_competition(db: Session, **kwargs: object) -> CompetitionSeason:
+    # Builds an *edition* row. After the Phase 2 split `Competition` means
+    # the timeless entity, so the thing tests actually want — one row per
+    # (competition, season), which is what /competitions serves — is a
+    # CompetitionSeason. The helper keeps its name because that is what the
+    # endpoint is still called.
+    comp = CompetitionSeason(
         statsbomb_id=kwargs.get("statsbomb_id", 999),
         season_id=kwargs.get("season_id", 999),
         country_name=kwargs.get("country_name", "Test Country"),
@@ -27,11 +32,11 @@ def create_competition(db: Session, **kwargs: object) -> Competition:
 
 
 def create_match(
-    db: Session, competition_id: uuid.UUID, **kwargs: object
+    db: Session, competition_season_id: uuid.UUID, **kwargs: object
 ) -> SoccerMatch:
     match = SoccerMatch(
         statsbomb_id=kwargs.get("statsbomb_id", 88888),
-        competition_id=competition_id,
+        competition_season_id=competition_season_id,
         match_date=kwargs.get("match_date", "2099-01-01"),
         home_team=kwargs.get("home_team", "Home FC"),
         away_team=kwargs.get("away_team", "Away FC"),

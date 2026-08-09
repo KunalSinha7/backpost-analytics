@@ -5,7 +5,60 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, Relationship, SQLModel
 
 
-class CompetitionBase(SQLModel):
+class Competition(SQLModel, table=True):
+    """The TIMELESS competition: La Liga, not La Liga 2018/2019.
+
+    This inverts what the name meant before Phase 2. The old `competition`
+    table was really an *edition* — one row per (competition, season) pair —
+    which is why La Liga's name, country and gender were stored 18 times over.
+    That is the 2NF violation in §1.1: those attributes depend on
+    `statsbomb_id` alone, not on the whole key.
+
+    StatsBomb uses "competition" the same way (`competition_id=11` is La Liga
+    across every season), as do Opta and Wyscout, so this is domain vocabulary
+    rather than vendor jargon (§2.1).
+    """
+
+    __table_args__ = (
+        UniqueConstraint("source_id", "external_id", name="uq_competition_source_ext"),
+    )
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    source_id: uuid.UUID = Field(foreign_key="data_source.id", index=True)
+    external_id: str = Field(max_length=64)
+    name: str = Field(max_length=255, index=True)
+    country_name: str = Field(max_length=100)
+    gender: str = Field(max_length=20)
+    is_youth: bool = False
+    is_international: bool = False
+
+
+class Season(SQLModel, table=True):
+    """A season: "2018/2019", or "1958" for single-year tournaments.
+
+    No `start_year`/`end_year`. They are undefined for the single-year names
+    the data actually contains (the 1958 World Cup) and nothing reads them, so
+    §6/Cuts drops them rather than shipping a column that is null or wrong on
+    day one.
+    """
+
+    __table_args__ = (
+        UniqueConstraint("source_id", "external_id", name="uq_season_source_ext"),
+    )
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    source_id: uuid.UUID = Field(foreign_key="data_source.id", index=True)
+    external_id: str = Field(max_length=64)
+    name: str = Field(max_length=100, index=True)
+
+
+class CompetitionSeasonBase(SQLModel):
+    """The EDITION — one row per (competition, season).
+
+    Field names are unchanged from the pre-split `CompetitionBase` on purpose:
+    `CompetitionPublic` inherits from this, and the Phase 2 gate is that the
+    `/competitions` response is byte-identical. The columns become redundant
+    with the FKs below once those are populated, and Phase 4 drops them.
+    """
+
     statsbomb_id: int = Field(index=True)
     season_id: int = Field(index=True)
     country_name: str = Field(max_length=100)
@@ -20,21 +73,33 @@ class CompetitionBase(SQLModel):
     match_available_360: str | None = Field(default=None, max_length=50)
 
 
-class Competition(CompetitionBase, table=True):
+class CompetitionSeason(CompetitionSeasonBase, table=True):
+    __tablename__ = "competition_season"  # type: ignore[assignment]
     __table_args__ = (UniqueConstraint("statsbomb_id", "season_id"),)
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     matches: list["SoccerMatch"] = Relationship(  # type: ignore  # noqa: F821
-        back_populates="competition", cascade_delete=True
+        back_populates="competition_season", cascade_delete=True
     )
-    # Declared here and not on CompetitionBase so it stays out of
-    # CompetitionPublic — same placement as Event.raw_event.
+    # On the table class, not the Base, so CompetitionPublic keeps its exact
+    # current shape.
+    competition_id: uuid.UUID | None = Field(
+        default=None, foreign_key="competition.id", index=True
+    )
+    # Named `season_ref_id` rather than `season_id` only because the legacy
+    # integer `season_id` above — StatsBomb's own season id, and a public API
+    # field — still occupies that name during expand. Phase 4 drops the legacy
+    # column and renames this one to `season_id`. Carrying both for a phase is
+    # what expand/contract costs; the alternative is a breaking API change now.
+    season_ref_id: uuid.UUID | None = Field(
+        default=None, foreign_key="season.id", index=True
+    )
     # none_as_null: see the note on Lineup.raw.
     raw: dict | None = Field(
         default=None, sa_column=Column(JSONB(none_as_null=True), nullable=True)
     )
 
 
-class CompetitionPublic(CompetitionBase):
+class CompetitionPublic(CompetitionSeasonBase):
     id: uuid.UUID
     match_count: int = 0
 

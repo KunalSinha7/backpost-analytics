@@ -16,9 +16,9 @@ function parsePossession(value: unknown): number | undefined {
 
 export const Route = createFileRoute("/_layout/soccer/visualize")({
   validateSearch: (search: Record<string, unknown>) => ({
-    competitionId:
-      typeof search.competitionId === "string"
-        ? search.competitionId
+    competitionSeasonId:
+      typeof search.competitionSeasonId === "string"
+        ? search.competitionSeasonId
         : undefined,
     teamName: typeof search.teamName === "string" ? search.teamName : undefined,
     matchId: typeof search.matchId === "string" ? search.matchId : undefined,
@@ -33,7 +33,8 @@ export const Route = createFileRoute("/_layout/soccer/visualize")({
 const TEAM_COLORS = ["#2563eb", "#dc2626", "#16a34a", "#d97706"]
 
 function VisualizePage() {
-  const { competitionId, teamName, matchId, possession } = Route.useSearch()
+  const { competitionSeasonId, teamName, matchId, possession } =
+    Route.useSearch()
   const navigate = Route.useNavigate()
   const [filteredEvents, setFilteredEvents] = useState<EventPublic[]>([])
   const [isLoadingEvents, setIsLoadingEvents] = useState(false)
@@ -65,7 +66,7 @@ function VisualizePage() {
         <p className="text-muted-foreground">Plot match events on the pitch</p>
       </div>
       <MatchHierarchyFilter
-        competitionId={competitionId}
+        competitionSeasonId={competitionSeasonId}
         teamName={teamName}
         matchId={matchId}
         onChange={(next) =>

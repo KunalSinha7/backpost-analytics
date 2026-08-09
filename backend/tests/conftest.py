@@ -4,13 +4,14 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, delete
+from sqlmodel import Session, col, delete, select
 
 from app.core.config import settings
 from app.core.db import engine, init_db
+from app.core.security import get_password_hash, verify_password
 from app.main import app
 from app.models import User
-from app.models.competition import Competition
+from app.models.competition import Competition, CompetitionSeason, Season
 from app.models.event import Event
 from app.models.frame360 import Frame360
 from app.models.lineup import Lineup
@@ -53,7 +54,7 @@ def _wipe_soccer_data(session: Session) -> None:
     session.execute(delete(Frame360))
     session.execute(delete(Lineup))
     session.execute(delete(SoccerMatch))
-    session.execute(delete(Competition))
+    session.execute(delete(CompetitionSeason))
     # After the rows that reference them. Teams and positions are wiped for the
     # same reason as everything above, plus one specific to them: they carry
     # UNIQUE(source_id, external_id), so a leaked row from a previous run makes
@@ -61,6 +62,8 @@ def _wipe_soccer_data(session: Session) -> None:
     session.execute(delete(TeamAlias))
     session.execute(delete(Team))
     session.execute(delete(Position))
+    session.execute(delete(Competition))
+    session.execute(delete(Season))
     session.commit()
 
 
@@ -70,10 +73,39 @@ def _tracking_create_user(**kwargs: object) -> User:
     return user
 
 
+def _reset_users(session: Session) -> None:
+    """Return the user table to a known state before the run starts.
+
+    Cleanup at teardown only runs when the suite exits normally, so a crashed
+    run leaks every user it created — and the next run fails on whichever test
+    re-creates one of them. That is not hypothetical: two separate false
+    failures in this suite traced back to 24 leaked users and a superuser whose
+    password a half-finished run had changed.
+
+    `init_db` cannot repair either, because it only acts when the superuser is
+    *absent*. Cleaning up front instead of only at exit makes the suite
+    self-healing regardless of how the previous run ended.
+    """
+    _assert_disposable_database()
+    session.execute(delete(User).where(col(User.is_superuser).is_(False)))
+    session.commit()
+
+    superuser = session.exec(
+        select(User).where(User.email == settings.FIRST_SUPERUSER)
+    ).first()
+    if superuser is not None and not verify_password(
+        settings.FIRST_SUPERUSER_PASSWORD, superuser.hashed_password
+    ):
+        superuser.hashed_password = get_password_hash(settings.FIRST_SUPERUSER_PASSWORD)
+        session.add(superuser)
+        session.commit()
+
+
 @pytest.fixture(scope="session", autouse=True)
 def db() -> Generator[Session, None, None]:
     with Session(engine) as session:
         init_db(session)  # creates superuser before tracking starts
+        _reset_users(session)
         _wipe_soccer_data(session)
         with (
             patch("app.repositories.user.create_user", _tracking_create_user),

@@ -3,7 +3,7 @@ import uuid
 
 from sqlmodel import Session
 
-from app.models.competition import Competition
+from app.models.competition import CompetitionSeason
 from app.models.match import SoccerMatch
 from app.repositories.match import MatchRepository
 from app.utils.statsbomb import StatsBombMatchRow
@@ -20,7 +20,7 @@ class MatchService:
         self,
         skip: int = 0,
         limit: int = 100,
-        competition_id: uuid.UUID | None = None,
+        competition_season_id: uuid.UUID | None = None,
         has_events: bool = False,
         team_name: str | None = None,
         team_id: uuid.UUID | None = None,
@@ -28,7 +28,7 @@ class MatchService:
         return self.repo.list_all(
             skip=skip,
             limit=limit,
-            competition_id=competition_id,
+            competition_season_id=competition_season_id,
             has_events=has_events,
             team_name=team_name,
             team_id=team_id,
@@ -36,14 +36,14 @@ class MatchService:
 
     def list_teams(
         self,
-        competition_id: uuid.UUID | None = None,
+        competition_season_id: uuid.UUID | None = None,
         has_events: bool = False,
     ) -> list[str]:
         return self.repo.list_distinct_teams(
-            competition_id=competition_id, has_events=has_events
+            competition_season_id=competition_season_id, has_events=has_events
         )
 
-    def ingest(self, competitions: list[Competition]) -> int:
+    def ingest(self, competitions: list[CompetitionSeason]) -> int:
         from statsbombpy import sb  # type: ignore[import-untyped]
 
         existing = self.repo.get_existing_statsbomb_ids()
@@ -70,7 +70,7 @@ class MatchService:
 
                 match = SoccerMatch(
                     statsbomb_id=match_row.match_id,
-                    competition_id=competition.id,
+                    competition_season_id=competition.id,
                     match_date=match_row.match_date[:20],
                     kick_off=match_row.kick_off[:20] if match_row.kick_off else None,
                     home_team=match_row.home_team,
@@ -105,7 +105,7 @@ class MatchService:
         logger.info("Match ingest: %d new", imported)
         return imported
 
-    def backfill_raw(self, competitions: list[Competition]) -> int:
+    def backfill_raw(self, competitions: list[CompetitionSeason]) -> int:
         """Populate `raw` on matches ingested before that column existed.
 
         `ingest` only ever inserts — it skips any match_id it already has — so

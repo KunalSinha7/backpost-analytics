@@ -175,7 +175,7 @@ export class SoccerService {
      * @param data The data for the request.
      * @param data.skip
      * @param data.limit
-     * @param data.competitionId
+     * @param data.competitionSeasonId
      * @param data.hasEvents
      * @param data.teamName
      * @param data.teamId
@@ -189,7 +189,7 @@ export class SoccerService {
             query: {
                 skip: data.skip,
                 limit: data.limit,
-                competition_id: data.competitionId,
+                competition_season_id: data.competitionSeasonId,
                 has_events: data.hasEvents,
                 team_name: data.teamName,
                 team_id: data.teamId
@@ -203,7 +203,7 @@ export class SoccerService {
     /**
      * Read Match Teams
      * @param data The data for the request.
-     * @param data.competitionId
+     * @param data.competitionSeasonId
      * @param data.hasEvents
      * @returns SoccerTeamsPublic Successful Response
      * @throws ApiError
@@ -213,7 +213,7 @@ export class SoccerService {
             method: 'GET',
             url: '/api/v1/soccer/matches/teams',
             query: {
-                competition_id: data.competitionId,
+                competition_season_id: data.competitionSeasonId,
                 has_events: data.hasEvents
             },
             errors: {

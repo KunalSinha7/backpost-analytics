@@ -4,15 +4,23 @@ from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, Relationship, SQLModel
 
-from app.models.competition import Competition
+from app.models.competition import CompetitionSeason
 
 
 class SoccerMatchBase(SQLModel):
     statsbomb_id: int = Field(index=True, unique=True)
+    # Renamed from `competition_id` in Phase 2. After the split that name is
+    # actively wrong: a `competition` table now exists and means the timeless
+    # entity, so `competition_id` here would point at an edition while reading
+    # as though it pointed at La Liga. Unlike the `statsbomb_id` rename that
+    # §6/H1 cut, this one is not cosmetic — leaving it makes the schema lie.
+    #
     # Indexed: /competitions?has_events=true correlates on this column, and
     # without it the planner seq-scans soccer_match once per competition —
     # measured at 14,136 ms vs 11.5 ms with the index on the same data.
-    competition_id: uuid.UUID = Field(foreign_key="competition.id", index=True)
+    competition_season_id: uuid.UUID = Field(
+        foreign_key="competition_season.id", index=True
+    )
     match_date: str = Field(max_length=20)
     kick_off: str | None = Field(default=None, max_length=20)
     home_team: str = Field(max_length=255)
@@ -52,7 +60,9 @@ class SoccerMatchBase(SQLModel):
 class SoccerMatch(SoccerMatchBase, table=True):
     __tablename__ = "soccer_match"  # type: ignore[assignment]
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    competition: Competition | None = Relationship(back_populates="matches")
+    competition_season: CompetitionSeason | None = Relationship(
+        back_populates="matches"
+    )
     # Declared here and not on SoccerMatchBase so it stays out of
     # SoccerMatchPublic — same placement as Event.raw_event.
     # none_as_null: see the note on Lineup.raw.

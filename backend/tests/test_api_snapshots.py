@@ -357,7 +357,7 @@ def test_matches_by_competition_snapshot(client: TestClient, seeded: Seed) -> No
         _get(
             client,
             "/matches/",
-            competition_id=str(seeded.competition_with_matches.id),
+            competition_season_id=str(seeded.competition_with_matches.id),
         ),
     )
 

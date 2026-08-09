@@ -21,16 +21,20 @@ class MatchRepository:
         self,
         skip: int = 0,
         limit: int = 100,
-        competition_id: uuid.UUID | None = None,
+        competition_season_id: uuid.UUID | None = None,
         has_events: bool = False,
         team_name: str | None = None,
         team_id: uuid.UUID | None = None,
     ) -> tuple[list[SoccerMatch], int, set[uuid.UUID]]:
         stmt = select(SoccerMatch)
         count_stmt = select(func.count()).select_from(SoccerMatch)
-        if competition_id is not None:
-            stmt = stmt.where(SoccerMatch.competition_id == competition_id)
-            count_stmt = count_stmt.where(SoccerMatch.competition_id == competition_id)
+        if competition_season_id is not None:
+            stmt = stmt.where(
+                SoccerMatch.competition_season_id == competition_season_id
+            )
+            count_stmt = count_stmt.where(
+                SoccerMatch.competition_season_id == competition_season_id
+            )
         if team_id is not None:
             # Exact, unlike the ILIKE `team_name` search below: an id either is
             # or is not this match's team, with no substring ambiguity — which
@@ -80,13 +84,15 @@ class MatchRepository:
 
     def list_distinct_teams(
         self,
-        competition_id: uuid.UUID | None = None,
+        competition_season_id: uuid.UUID | None = None,
         has_events: bool = False,
     ) -> list[str]:
         def _team_select(team_col: Mapped[str]) -> Select[Any]:
             stmt: Select[Any] = select(team_col.label("team"))
-            if competition_id is not None:
-                stmt = stmt.where(col(SoccerMatch.competition_id) == competition_id)
+            if competition_season_id is not None:
+                stmt = stmt.where(
+                    col(SoccerMatch.competition_season_id) == competition_season_id
+                )
             if has_events:
                 stmt = stmt.where(self._events_exist_clause())
             return stmt
@@ -106,19 +112,19 @@ class MatchRepository:
     def list_for_competition(
         self, competition_statsbomb_id: int, season_id: int
     ) -> list[SoccerMatch]:
-        from app.models.competition import Competition
+        from app.models.competition import CompetitionSeason
 
         comp = self.session.exec(
-            select(Competition).where(
-                Competition.statsbomb_id == competition_statsbomb_id,
-                Competition.season_id == season_id,
+            select(CompetitionSeason).where(
+                CompetitionSeason.statsbomb_id == competition_statsbomb_id,
+                CompetitionSeason.season_id == season_id,
             )
         ).first()
         if comp is None:
             return []
         return list(
             self.session.exec(
-                select(SoccerMatch).where(SoccerMatch.competition_id == comp.id)
+                select(SoccerMatch).where(SoccerMatch.competition_season_id == comp.id)
             ).all()
         )
 
