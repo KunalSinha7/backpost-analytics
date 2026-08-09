@@ -23,9 +23,7 @@ logger = logging.getLogger(__name__)
 def main() -> None:
     with Session(engine) as session:
         report = CompetitionSplitBackfillService(session).run()
-    logger.info(
-        "Competition split report:\n%s", json.dumps(report.as_dict(), indent=2)
-    )
+    logger.info("Competition split report:\n%s", json.dumps(report.as_dict(), indent=2))
 
 
 if __name__ == "__main__":

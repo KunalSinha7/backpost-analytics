@@ -81,7 +81,9 @@ def _editions(db: Session, statsbomb_id: int, seasons: list[tuple[int, str]]) ->
 
 
 def test_backfill_collapses_repeated_competitions(db: Session) -> None:
-    _editions(db, 91001, [(91001, "2016/2017"), (91002, "2017/2018"), (91003, "2018/2019")])
+    _editions(
+        db, 91001, [(91001, "2016/2017"), (91002, "2017/2018"), (91003, "2018/2019")]
+    )
     CompetitionSplitBackfillService(db).run()
 
     competitions = db.exec(
@@ -131,7 +133,7 @@ def test_backfill_is_idempotent(db: Session) -> None:
     assert second.editions_linked == 0
 
 
-def test_backfill_refuses_empty_input(db: Session) -> None:
+def test_backfill_refuses_empty_input() -> None:
     service = CompetitionSplitBackfillService.__new__(CompetitionSplitBackfillService)
 
     class _Zero:
@@ -178,9 +180,9 @@ def test_competition_attributes_are_stored_once(db: Session) -> None:
 
 def _load_migration():
     path = next(
-        Path(__file__).parents[2].glob(
-            "app/alembic/versions/*phase_2_competition_split*.py"
-        )
+        Path(__file__)
+        .parents[2]
+        .glob("app/alembic/versions/*phase_2_competition_split*.py")
     )
     spec = importlib.util.spec_from_file_location("phase2_migration", path)
     assert spec is not None and spec.loader is not None
