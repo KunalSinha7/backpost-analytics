@@ -84,9 +84,7 @@ def test_resolver_keys_on_id_not_name(db: Session) -> None:
     assert first is not None and second is not None
     assert first.id == second.id
 
-    teams = db.exec(
-        select(Team).where(Team.external_id == str(MARSEILLE_ID))
-    ).all()
+    teams = db.exec(select(Team).where(Team.external_id == str(MARSEILLE_ID))).all()
     assert len(teams) == 1
 
 
@@ -131,7 +129,11 @@ def test_resolver_fills_gender_and_country_gaps_only(db: Session) -> None:
     resolver = EntityResolver(db)
     resolver.resolve_team(9150, EVENT_FEED_NAME)
     team = resolver.resolve_team(
-        9150, MATCH_FEED_NAME, authoritative_name=True, gender="male", country_name="France"
+        9150,
+        MATCH_FEED_NAME,
+        authoritative_name=True,
+        gender="male",
+        country_name="France",
     )
     db.commit()
 
@@ -159,11 +161,11 @@ def test_resolver_returns_none_for_missing_id(db: Session) -> None:
 # ── IdentityBackfillService ─────────────────────────────────────────────────
 
 
-def _marseille_fixture(db: Session, *, statsbomb_base: int) -> tuple[uuid.UUID, uuid.UUID]:
+def _marseille_fixture(
+    db: Session, *, statsbomb_base: int
+) -> tuple[uuid.UUID, uuid.UUID]:
     """A match whose feeds disagree about team 147's name, with matching events."""
-    comp = create_competition(
-        db, statsbomb_id=statsbomb_base, season_id=statsbomb_base
-    )
+    comp = create_competition(db, statsbomb_id=statsbomb_base, season_id=statsbomb_base)
     match = create_match(
         db,
         comp.id,
@@ -190,9 +192,7 @@ def _marseille_fixture(db: Session, *, statsbomb_base: int) -> tuple[uuid.UUID, 
         team_name=EVENT_FEED_NAME,
         statsbomb_player_id=statsbomb_base,
         raw={
-            "positions": [
-                {"position_id": "9", "position": "Right Defensive Midfield"}
-            ]
+            "positions": [{"position_id": "9", "position": "Right Defensive Midfield"}]
         },
     )
     return match.id, lineup.id
@@ -230,9 +230,7 @@ def test_backfill_resolves_marseille_to_one_team(db: Session) -> None:
     _marseille_fixture(db, statsbomb_base=77101)
     IdentityBackfillService(db).run()
 
-    teams = db.exec(
-        select(Team).where(Team.external_id == str(MARSEILLE_ID))
-    ).all()
+    teams = db.exec(select(Team).where(Team.external_id == str(MARSEILLE_ID))).all()
     assert len(teams) == 1
     assert teams[0].name == MATCH_FEED_NAME
 
@@ -396,9 +394,7 @@ def test_event_filter_by_team_id_is_exact(db: Session) -> None:
 
     match = db.get(SoccerMatch, match_id)
     assert match is not None and match.home_team_id is not None
-    _, count = EventRepository(db).list_by_match(
-        match_id, team_id=match.home_team_id
-    )
+    _, count = EventRepository(db).list_by_match(match_id, team_id=match.home_team_id)
     assert count == 1
 
 

@@ -1,6 +1,5 @@
 import logging
 from dataclasses import dataclass, field
-
 from typing import Any, cast
 
 from sqlalchemy import CursorResult, Executable, text
@@ -352,7 +351,9 @@ class IdentityBackfillService:
         return self.session.execute(text("SELECT count(*) FROM team")).scalar_one()  # type: ignore[arg-type]
 
     def _count_aliases(self) -> int:
-        return self.session.execute(text("SELECT count(*) FROM team_alias")).scalar_one()  # type: ignore[arg-type]
+        return self.session.execute(
+            text("SELECT count(*) FROM team_alias")
+        ).scalar_one()  # type: ignore[arg-type]
 
     def _count_positions(self) -> int:
         return self.session.execute(text("SELECT count(*) FROM position")).scalar_one()  # type: ignore[arg-type]

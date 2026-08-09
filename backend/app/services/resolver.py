@@ -57,7 +57,9 @@ class EntityResolver:
     merge stays auditable and Phase 4 stays reversible.
     """
 
-    def __init__(self, session: Session, source_key: str = STATSBOMB_SOURCE_KEY) -> None:
+    def __init__(
+        self, session: Session, source_key: str = STATSBOMB_SOURCE_KEY
+    ) -> None:
         self.session = session
         self.teams = TeamRepository(session)
         self.positions = PositionRepository(session)
@@ -147,9 +149,7 @@ class EntityResolver:
         if position is None:
             position = self.positions.get_by_external(self.source.id, key)
         if position is None:
-            position = Position(
-                source_id=self.source.id, external_id=key, name=name
-            )
+            position = Position(source_id=self.source.id, external_id=key, name=name)
             self.positions.add(position)
             self.session.flush()
         self._position_cache[key] = position
