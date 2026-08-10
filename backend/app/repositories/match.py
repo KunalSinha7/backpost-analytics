@@ -1,5 +1,5 @@
 import uuid
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import Select, and_, union
 from sqlalchemy.orm import aliased
@@ -36,11 +36,16 @@ class MatchRepository:
         team_name: str | None = None,
         team_id: uuid.UUID | None = None,
     ) -> tuple[list[tuple[SoccerMatch, str, str]], int, set[uuid.UUID]]:
-        home = aliased(Team)
-        away = aliased(Team)
+        # Annotated Any because `aliased()` returns a runtime proxy whose
+        # attributes are Column objects, while static analysis sees the model's
+        # declared `str`. Typing it honestly here beats a per-line ignore.
+        home = cast(Any, aliased(Team))
+        away = cast(Any, aliased(Team))
 
         stmt = (
-            select(SoccerMatch, home.name.label("home_team"), away.name.label("away_team"))
+            select(
+                SoccerMatch, home.name.label("home_team"), away.name.label("away_team")
+            )
             .join(home, col(SoccerMatch.home_team_id) == home.id)
             .join(away, col(SoccerMatch.away_team_id) == away.id)
         )
@@ -116,9 +121,11 @@ class MatchRepository:
         """
 
         def _team_select(fk: Any, alias: Any) -> Select[Any]:
-            stmt: Select[Any] = select(alias.name.label("team")).select_from(
-                SoccerMatch
-            ).join(alias, fk == alias.id)
+            stmt: Select[Any] = (
+                select(alias.name.label("team"))
+                .select_from(SoccerMatch)
+                .join(alias, fk == alias.id)
+            )
             if competition_season_id is not None:
                 stmt = stmt.where(
                     col(SoccerMatch.competition_season_id) == competition_season_id
@@ -127,8 +134,8 @@ class MatchRepository:
                 stmt = stmt.where(self._events_exist_clause())
             return stmt
 
-        home = aliased(Team)
-        away = aliased(Team)
+        home = cast(Any, aliased(Team))
+        away = cast(Any, aliased(Team))
         combined = union(
             _team_select(col(SoccerMatch.home_team_id), home),
             _team_select(col(SoccerMatch.away_team_id), away),

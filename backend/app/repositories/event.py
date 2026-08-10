@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 from sqlmodel import Session, col, func, select
 
@@ -31,7 +32,9 @@ class EventRepository:
         return list(ids)
 
     def _player_ids_for_name(self, name: str) -> list[uuid.UUID]:
-        return list(self.session.exec(select(Player.id).where(Player.name == name)).all())
+        return list(
+            self.session.exec(select(Player.id).where(Player.name == name)).all()
+        )
 
     def list_by_match(
         self,
@@ -50,10 +53,10 @@ class EventRepository:
         )
         stmt = select(Event).where(Event.match_id == match_id)
 
-        def both(clause: object) -> None:
+        def both(clause: Any) -> None:
             nonlocal stmt, count_stmt
-            stmt = stmt.where(clause)  # type: ignore[arg-type]
-            count_stmt = count_stmt.where(clause)  # type: ignore[arg-type]
+            stmt = stmt.where(clause)
+            count_stmt = count_stmt.where(clause)
 
         if type_name is not None:
             both(Event.type_name == type_name)

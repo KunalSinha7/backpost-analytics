@@ -14,6 +14,9 @@ router = APIRouter(prefix="/lineups", tags=["soccer"])
 def read_lineups(session: SessionDep, match_id: uuid.UUID) -> Any:
     rows, count = LineupService(session).list_by_match(match_id)
     return LineupsPublic(
-        data=[LineupPublic.model_validate(r) for r in rows],
+        data=[
+            LineupPublic.from_row(lineup, team_name, player)
+            for lineup, team_name, player in rows
+        ],
         count=count,
     )

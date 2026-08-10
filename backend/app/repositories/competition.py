@@ -4,7 +4,7 @@ from sqlalchemy import func
 from sqlmodel import Session, col, select
 
 from app.exceptions.competition import CompetitionNotFoundError
-from app.models.competition import CompetitionSeason
+from app.models.competition import Competition, CompetitionSeason, Season
 
 
 class CompetitionRepository:
@@ -17,7 +17,7 @@ class CompetitionRepository:
         limit: int = 100,
         has_matches: bool = False,
         has_events: bool = False,
-    ) -> tuple[list[tuple[CompetitionSeason, int]], int]:
+    ) -> tuple[list[tuple[CompetitionSeason, Competition, Season, int]], int]:
         from app.models.event import Event
         from app.models.match import SoccerMatch
 
@@ -55,14 +55,19 @@ class CompetitionRepository:
 
         stmt = (
             select(
-                CompetitionSeason, func.count(col(SoccerMatch.id)).label("match_count")
+                CompetitionSeason,
+                Competition,
+                Season,
+                func.count(col(SoccerMatch.id)).label("match_count"),
             )
+            .join(Competition, col(CompetitionSeason.competition_id) == Competition.id)
+            .join(Season, col(CompetitionSeason.season_ref_id) == Season.id)
             .outerjoin(
                 SoccerMatch,
                 col(SoccerMatch.competition_season_id) == col(CompetitionSeason.id),
             )
-            .group_by(col(CompetitionSeason.id))
-            .order_by(col(CompetitionSeason.competition_name))
+            .group_by(col(CompetitionSeason.id), col(Competition.id), col(Season.id))
+            .order_by(col(Competition.name))
             .offset(skip)
             .limit(limit)
         )
@@ -72,10 +77,13 @@ class CompetitionRepository:
             stmt = stmt.where(_events_exist_clause())
 
         rows = self.session.exec(stmt).all()
-        # Hand back the session-attached ORM row as-is. `CompetitionSeason.model_validate`
-        # would build a detached copy, dropping it out of the identity map and
-        # walking `CompetitionSeason.matches` on the way — one extra query per row.
-        return [(competition, match_count) for competition, match_count in rows], count
+        # Hand back the session-attached ORM rows as-is. `model_validate` would
+        # build a detached copy, dropping it out of the identity map and walking
+        # `CompetitionSeason.matches` on the way — one extra query per row.
+        return [
+            (edition, competition, season, match_count)
+            for edition, competition, season, match_count in rows
+        ], count
 
     def get_existing_keys(self) -> set[tuple[int, int]]:
         return {

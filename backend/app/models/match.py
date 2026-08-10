@@ -64,19 +64,18 @@ class SoccerMatch(SoccerMatchBase, table=True):
 
 
 class SoccerMatchPublic(SoccerMatchBase):
-    """The API contract, unchanged — but no longer backed by stored strings.
-
-    §3's rule is that the strings leave the *tables*, not the *API*. These two
-    fields used to be columns on `soccer_match`, duplicated on every one of the
-    3,961 rows and free to drift from `team.name` — which is exactly how the
-    Marseille bug happened. They are now resolved through `home_team_id` /
-    `away_team_id` by the repository, which selects them as labelled columns in
-    the same query rather than traversing a relationship.
-    """
+    # The API contract, unchanged — but no longer backed by stored strings.
+    #
+    # §3's rule is that the strings leave the *tables*, not the *API*. These two
+    # fields used to be columns on `soccer_match`, duplicated on every one of the
+    # 3,961 rows and free to drift from `team.name` — which is exactly how the
+    # Marseille bug happened. They are now resolved through `home_team_id` /
+    # `away_team_id` by the repository, which selects them as labelled columns in
+    # the same query rather than traversing a relationship.
 
     id: uuid.UUID
-    home_team: str
-    away_team: str
+    home_team: str = Field(max_length=255)
+    away_team: str = Field(max_length=255)
     has_events: bool = False
 
     @classmethod

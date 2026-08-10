@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 from app.exceptions.event import StatsBombFetchError
 from app.models.event import Event
 from app.models.match import SoccerMatch
+from app.models.player import Player
 from app.services.competition import CompetitionService
 from app.services.event import EventService
 from app.services.frame360 import Frame360Service
@@ -45,6 +46,8 @@ def _matches_df(match_id: int) -> pd.DataFrame:
                 "kick_off": "15:00:00.000",
                 "home_team": "Team A",
                 "away_team": "Team B",
+                "home_team_id": 147,
+                "away_team_id": 200,
                 "home_score": 2,
                 "away_score": 1,
                 "stadium": None,
@@ -82,6 +85,8 @@ def _events_df(event_id: str) -> pd.DataFrame:
                 "possession_team": {"name": "Team A"},
                 "play_pattern": {"name": "Regular Play"},
                 "team": {"name": "Team A"},
+                "team_id": 147,
+                "possession_team_id": 147,
                 "player": None,
                 "location": [60.0, 40.0],
                 "duration": 0.0,
@@ -343,11 +348,15 @@ def test_event_service_ingest_populates_pass_recipient(db: Session) -> None:
     events_df = _events_df("evt-svc-6017-001")
     events_df.at[0, "type"] = {"name": "Pass"}
     events_df["pass_recipient"] = ["Alice"]
+    events_df["pass_recipient_id"] = [777001]
     with patch("statsbombpy.sb.events", return_value=events_df):
         EventService(db).ingest_for_competition(6017, 6017)
 
     ev = _get_event(db, "evt-svc-6017-001")
-    assert ev.pass_recipient == "Alice"
+    assert ev.pass_recipient_id is not None
+    recipient = db.get(Player, ev.pass_recipient_id)
+    assert recipient is not None
+    assert recipient.name == "Alice"
 
 
 def test_event_service_ingest_no_pass_recipient_for_other_types(db: Session) -> None:
@@ -358,7 +367,7 @@ def test_event_service_ingest_no_pass_recipient_for_other_types(db: Session) -> 
         EventService(db).ingest_for_competition(6018, 6018)
 
     ev = _get_event(db, "evt-svc-6018-001")
-    assert ev.pass_recipient is None
+    assert ev.pass_recipient_id is None
 
 
 # ── LineupService ──────────────────────────────────────────────────────────
@@ -368,7 +377,7 @@ def test_event_service_ingest_no_pass_recipient_for_other_types(db: Session) -> 
 
 def test_lineup_service_ingest(db: Session) -> None:
     comp = create_competition(db, statsbomb_id=6009, season_id=6009)
-    create_match(db, comp.id, statsbomb_id=60006)
+    create_match(db, comp.id, statsbomb_id=60006, home_team="Team A")
     with patch("statsbombpy.sb.lineups", return_value=_lineups_dict()):
         n = LineupService(db).ingest_for_competition(6009, 6009)
     assert n == 1
@@ -376,7 +385,7 @@ def test_lineup_service_ingest(db: Session) -> None:
 
 def test_lineup_service_ingest_idempotent(db: Session) -> None:
     comp = create_competition(db, statsbomb_id=6010, season_id=6010)
-    create_match(db, comp.id, statsbomb_id=60007)
+    create_match(db, comp.id, statsbomb_id=60007, home_team="Team A")
     with patch("statsbombpy.sb.lineups", return_value=_lineups_dict()):
         n1 = LineupService(db).ingest_for_competition(6010, 6010)
     with patch("statsbombpy.sb.lineups", return_value=_lineups_dict()):
@@ -387,7 +396,7 @@ def test_lineup_service_ingest_idempotent(db: Session) -> None:
 
 def test_lineup_service_ingest_skips_fetch_error(db: Session) -> None:
     comp = create_competition(db, statsbomb_id=6011, season_id=6011)
-    create_match(db, comp.id, statsbomb_id=60008)
+    create_match(db, comp.id, statsbomb_id=60008, home_team="Team A")
     with patch("statsbombpy.sb.lineups", side_effect=Exception("fetch error")):
         n = LineupService(db).ingest_for_competition(6011, 6011)
     assert n == 0

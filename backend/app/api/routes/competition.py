@@ -34,10 +34,10 @@ def read_competitions(
     )
     return CompetitionsPublic(
         data=[
-            CompetitionPublic.model_validate(comp).model_copy(
-                update={"match_count": match_count}
+            CompetitionPublic.from_row(
+                edition, competition, season, match_count=match_count
             )
-            for comp, match_count in rows
+            for edition, competition, season, match_count in rows
         ],
         count=count,
     )

@@ -14,8 +14,6 @@ from sqlmodel import Session, select
 from app.models.competition import CompetitionSeason, Season
 from app.models.lineup_position import LineupPosition
 from app.models.player import Player
-from app.services.competition_split_backfill import CompetitionSplitBackfillService
-from app.services.identity_backfill import IdentityBackfillService
 from app.services.lineup_position_backfill import (
     LineupPositionBackfillService,
     parse_clock,
@@ -72,7 +70,8 @@ def _season_fixture(
     """One player, one match, a known number of passes. Returns (player, season)."""
     # Created explicitly: the player table is normally populated by the lineup
     # ingest, which these fixtures bypass by inserting lineups directly.
-    db.add(Player(statsbomb_id=base, name="Stat Player"))
+    player_name = f"Stat Player {base}"
+    db.add(Player(statsbomb_id=base, name=player_name))
     db.commit()
     comp = create_competition(db, statsbomb_id=base, season_id=base)
     match = create_match(
@@ -91,7 +90,7 @@ def _season_fixture(
             index=index + 1,
             type_name="Pass",
             team="Stat FC",
-            player="Stat Player",
+            player=player_name,
             raw_event={
                 "team_id": base,
                 "player_id": base,
@@ -115,13 +114,13 @@ def _season_fixture(
         match.id,
         team_name="Stat FC",
         statsbomb_player_id=base,
-        player_name="Stat Player",
+        player_name=player_name,
         raw={"positions": stints},
     )
     db.commit()
 
-    IdentityBackfillService(db).run()
-    CompetitionSplitBackfillService(db).run()
+    # The fixtures resolve team/player/competition/season as they build, so
+    # only the stint flattening still needs a backfill pass.
     LineupPositionBackfillService(db).run()
 
     player = db.exec(select(Player).where(Player.statsbomb_id == base)).one()

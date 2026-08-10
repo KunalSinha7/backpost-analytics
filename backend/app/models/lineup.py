@@ -4,15 +4,13 @@ from sqlalchemy import Column, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
+from app.models.player import Player
+
 
 class LineupBase(SQLModel):
     match_id: uuid.UUID = Field(foreign_key="soccer_match.id", index=True)
-    team_name: str = Field(max_length=255)
     statsbomb_player_id: int
-    player_name: str = Field(max_length=255)
-    player_nickname: str | None = Field(default=None, max_length=255)
     jersey_number: int
-    country_name: str | None = Field(default=None, max_length=100)
     started: bool = Field(default=False)
 
 
@@ -34,10 +32,9 @@ class Lineup(LineupBase, table=True):
     # team_id is resolved through the *event* feed, never against the parent
     # match's two teams — see §1.6/B0. Scoping a name comparison to two
     # candidates is not an id match, and it fails on the 20 Marseille rows.
-    team_id: uuid.UUID | None = Field(default=None, foreign_key="team.id", index=True)
-    player_id: uuid.UUID | None = Field(
-        default=None, foreign_key="player.id", index=True
-    )
+    # NOT NULL as of Phase 4 — 0 nulls across all 13,650 rows.
+    team_id: uuid.UUID = Field(foreign_key="team.id", index=True)
+    player_id: uuid.UUID = Field(foreign_key="player.id", index=True)
     # Declared here and not on LineupBase so it stays out of LineupPublic —
     # same placement as Event.raw_event. SQL NULL means "ingested before this
     # column existed", as distinct from a captured-but-empty payload.
@@ -51,7 +48,30 @@ class Lineup(LineupBase, table=True):
 
 
 class LineupPublic(LineupBase):
+    # The API contract, unchanged — names resolved through the FKs.
+    #
+    # `player_name` and `player_nickname` were duplicated onto every one of a
+    # player's appearances; `team_name` onto every squad member of every match.
+    # They now come from `player` and `team`, which is what §1.3 meant by player
+    # identity being split three ways with no FK.
+
     id: uuid.UUID
+    team_name: str = Field(max_length=255)
+    player_name: str = Field(max_length=255)
+    player_nickname: str | None = Field(default=None, max_length=255)
+    country_name: str | None = Field(default=None, max_length=100)
+
+    @classmethod
+    def from_row(
+        cls, lineup: "Lineup", team_name: str, player: "Player"
+    ) -> "LineupPublic":
+        return cls(
+            **lineup.model_dump(exclude={"raw"}),
+            team_name=team_name,
+            player_name=player.name,
+            player_nickname=player.nickname,
+            country_name=player.nationality,
+        )
 
 
 class LineupsPublic(SQLModel):

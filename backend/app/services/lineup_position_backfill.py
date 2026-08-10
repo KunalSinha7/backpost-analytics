@@ -8,12 +8,21 @@ from sqlmodel import Session, func, select
 from app.models.lineup import Lineup
 from app.models.lineup_position import LineupPosition
 from app.models.position import Position
-from app.services.identity_backfill import EmptyBackfillInputError
-from app.services.resolver import normalize_external_id
+from app.services.resolver import EntityResolver, normalize_external_id
 
 logger = logging.getLogger(__name__)
 
 FINAL_WHISTLE = "Final Whistle"
+
+
+class EmptyBackfillInputError(RuntimeError):
+    """Raised when the tables this backfill reads are empty.
+
+    Guards the failure mode in §7.1a: the test suite deletes every row of
+    soccer data, so "write migration -> run tests -> run backfill" destroys
+    the backfill's own input. It would then succeed against empty tables and
+    report zero rows — a false green indistinguishable from a clean run.
+    """
 
 
 def parse_clock(value: str | None) -> int | None:
@@ -91,9 +100,35 @@ class LineupPositionBackfillService:
     def _positions_by_external_id(self) -> dict[str, uuid.UUID]:
         return {p.external_id: p.id for p in self.session.exec(select(Position)).all()}
 
+    def build_positions(self) -> int:
+        """Build the position vocabulary from `lineup.raw`.
+
+        This moved here when the Phase 1 backfill was retired, and it belongs
+        here: §2.2 claimed `event.position_id` came from `raw_event`, but that
+        key does not exist — statsbombpy flattens StatsBomb's nested
+        `position: {id, name}` to the name alone. The numeric ids survive only
+        in `lineup.raw`'s `positions[]`, which is exactly what this service
+        already reads.
+        """
+        resolver = EntityResolver(self.session)
+        rows = self.session.execute(
+            text(
+                """
+                SELECT DISTINCT p->>'position_id' AS ext, p->>'position' AS name
+                FROM lineup l, jsonb_array_elements((l.raw->'positions')::jsonb) p
+                WHERE p->>'position_id' IS NOT NULL
+                """
+            )
+        ).all()
+        for ext, name in rows:
+            resolver.resolve_position(ext, name)
+        self.session.commit()
+        return len(rows)
+
     def run(self) -> LineupPositionReport:
         self.assert_inputs_present()
         report = LineupPositionReport()
+        self.build_positions()
 
         already_done = {
             row[0]

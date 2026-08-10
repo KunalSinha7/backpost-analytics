@@ -61,19 +61,18 @@ class Event(EventBase, table=True):
 
 
 class EventPublic(EventBase):
-    """The API contract, unchanged — names resolved rather than stored.
-
-    §6 warns specifically about this path: `read_events` defaults to
-    `limit=10000`, so resolving these through ORM relationships would mean up
-    to four lazy loads per row. The service instead builds one id -> name map
-    per match (at most two teams and a few dozen players) and maps in memory.
-    """
+    # The API contract, unchanged — names resolved rather than stored.
+    #
+    # §6 warns specifically about this path: `read_events` defaults to
+    # `limit=10000`, so resolving these through ORM relationships would mean up
+    # to four lazy loads per row. The service instead builds one id -> name map
+    # per match (at most two teams and a few dozen players) and maps in memory.
 
     id: uuid.UUID
-    team: str
-    player: str | None = None
-    pass_recipient: str | None = None
-    possession_team_name: str | None = None
+    team: str = Field(max_length=255)
+    player: str | None = Field(default=None, max_length=255)
+    pass_recipient: str | None = Field(default=None, max_length=255)
+    possession_team_name: str | None = Field(default=None, max_length=255)
 
     @classmethod
     def from_row(
@@ -99,7 +98,9 @@ class EventPublic(EventBase):
                 names.get(event.pass_recipient_id) if event.pass_recipient_id else None
             ),
             possession_team_name=(
-                names.get(event.possession_team_id) if event.possession_team_id else None
+                names.get(event.possession_team_id)
+                if event.possession_team_id
+                else None
             ),
         )
 

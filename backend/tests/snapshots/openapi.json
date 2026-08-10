@@ -162,11 +162,11 @@
         "required": [
           "statsbomb_id",
           "season_id",
+          "id",
           "country_name",
           "competition_name",
           "competition_gender",
-          "season_name",
-          "id"
+          "season_name"
         ],
         "title": "CompetitionPublic",
         "type": "object"
@@ -403,8 +403,8 @@
           "minute",
           "second",
           "type_name",
-          "team",
-          "id"
+          "id",
+          "team"
         ],
         "title": "EventPublic",
         "type": "object"
@@ -580,11 +580,11 @@
         },
         "required": [
           "match_id",
-          "team_name",
           "statsbomb_player_id",
-          "player_name",
           "jersey_number",
-          "id"
+          "id",
+          "team_name",
+          "player_name"
         ],
         "title": "LineupPublic",
         "type": "object"
@@ -887,16 +887,9 @@
             "title": "Away Team Group"
           },
           "away_team_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Away Team Id"
+            "format": "uuid",
+            "title": "Away Team Id",
+            "type": "string"
           },
           "competition_season_id": {
             "format": "uuid",
@@ -985,16 +978,9 @@
             "title": "Home Team Group"
           },
           "home_team_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Home Team Id"
+            "format": "uuid",
+            "title": "Home Team Id",
+            "type": "string"
           },
           "id": {
             "format": "uuid",
@@ -1098,9 +1084,11 @@
           "statsbomb_id",
           "competition_season_id",
           "match_date",
+          "home_team_id",
+          "away_team_id",
+          "id",
           "home_team",
-          "away_team",
-          "id"
+          "away_team"
         ],
         "title": "SoccerMatchPublic",
         "type": "object"
