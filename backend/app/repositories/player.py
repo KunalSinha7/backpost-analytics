@@ -45,26 +45,6 @@ class PlayerRepository:
         # note in CompetitionRepository.list_all.
         return [(player, match_count) for player, match_count in rows], count
 
-    def upsert_from_lineup_batch(self, lineups: list[Lineup]) -> int:
-        existing_ids = set(self.session.exec(select(col(Player.statsbomb_id))).all())
-        new_players = []
-        seen: set[int] = set()
-        for lineup in lineups:
-            sid = lineup.statsbomb_player_id
-            if sid not in existing_ids and sid not in seen:
-                seen.add(sid)
-                new_players.append(
-                    Player(
-                        statsbomb_id=sid,
-                        name=lineup.player_name,
-                        nickname=lineup.player_nickname,
-                        nationality=lineup.country_name,
-                    )
-                )
-        if new_players:
-            self.session.add_all(new_players)
-        return len(new_players)
-
     def get_by_id(self, player_id: uuid.UUID) -> Player | None:
         return self.session.get(Player, player_id)
 

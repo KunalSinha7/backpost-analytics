@@ -12,17 +12,17 @@ export type Body_login_login_access_token = {
 export type CompetitionPublic = {
     statsbomb_id: number;
     season_id: number;
+    match_updated?: (string | null);
+    match_available?: (string | null);
+    match_updated_360?: (string | null);
+    match_available_360?: (string | null);
+    id: string;
     country_name: string;
     competition_name: string;
     competition_gender: string;
     competition_youth?: boolean;
     competition_international?: boolean;
     season_name: string;
-    match_updated?: (string | null);
-    match_available?: (string | null);
-    match_updated_360?: (string | null);
-    match_available_360?: (string | null);
-    id: string;
     match_count?: number;
 };
 
@@ -41,20 +41,20 @@ export type EventPublic = {
     second: number;
     type_name: string;
     possession?: (number | null);
-    possession_team_name?: (string | null);
     play_pattern_name?: (string | null);
-    team: string;
-    player?: (string | null);
     location_x?: (number | null);
     location_y?: (number | null);
     end_location_x?: (number | null);
     end_location_y?: (number | null);
-    pass_recipient?: (string | null);
     duration?: (number | null);
     under_pressure?: (boolean | null);
     off_camera?: (boolean | null);
     out?: (boolean | null);
     id: string;
+    team: string;
+    player?: (string | null);
+    pass_recipient?: (string | null);
+    possession_team_name?: (string | null);
 };
 
 export type EventsPublic = {
@@ -86,14 +86,14 @@ export type IngestResult = {
 
 export type LineupPublic = {
     match_id: string;
-    team_name: string;
     statsbomb_player_id: number;
-    player_name: string;
-    player_nickname?: (string | null);
     jersey_number: number;
-    country_name?: (string | null);
     started?: boolean;
     id: string;
+    team_name: string;
+    player_name: string;
+    player_nickname?: (string | null);
+    country_name?: (string | null);
 };
 
 export type LineupsPublic = {
@@ -166,8 +166,6 @@ export type SoccerMatchPublic = {
     competition_season_id: string;
     match_date: string;
     kick_off?: (string | null);
-    home_team: string;
-    away_team: string;
     home_score?: (number | null);
     away_score?: (number | null);
     stadium?: (string | null);
@@ -185,9 +183,11 @@ export type SoccerMatchPublic = {
     match_status?: (string | null);
     last_updated?: (string | null);
     match_status_360?: (string | null);
-    home_team_id?: (string | null);
-    away_team_id?: (string | null);
+    home_team_id: string;
+    away_team_id: string;
     id: string;
+    home_team: string;
+    away_team: string;
     has_events?: boolean;
 };
 

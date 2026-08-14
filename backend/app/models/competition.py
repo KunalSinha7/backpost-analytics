@@ -61,12 +61,6 @@ class CompetitionSeasonBase(SQLModel):
 
     statsbomb_id: int = Field(index=True)
     season_id: int = Field(index=True)
-    country_name: str = Field(max_length=100)
-    competition_name: str = Field(max_length=255)
-    competition_gender: str = Field(max_length=20)
-    competition_youth: bool = False
-    competition_international: bool = False
-    season_name: str = Field(max_length=100)
     match_updated: str | None = Field(default=None, max_length=50)
     match_available: str | None = Field(default=None, max_length=50)
     match_updated_360: str | None = Field(default=None, max_length=50)
@@ -82,17 +76,14 @@ class CompetitionSeason(CompetitionSeasonBase, table=True):
     )
     # On the table class, not the Base, so CompetitionPublic keeps its exact
     # current shape.
-    competition_id: uuid.UUID | None = Field(
-        default=None, foreign_key="competition.id", index=True
-    )
+    # NOT NULL as of Phase 4 — 0 nulls across all 80 editions.
+    competition_id: uuid.UUID = Field(foreign_key="competition.id", index=True)
     # Named `season_ref_id` rather than `season_id` only because the legacy
     # integer `season_id` above — StatsBomb's own season id, and a public API
     # field — still occupies that name during expand. Phase 4 drops the legacy
     # column and renames this one to `season_id`. Carrying both for a phase is
     # what expand/contract costs; the alternative is a breaking API change now.
-    season_ref_id: uuid.UUID | None = Field(
-        default=None, foreign_key="season.id", index=True
-    )
+    season_ref_id: uuid.UUID = Field(foreign_key="season.id", index=True)
     # none_as_null: see the note on Lineup.raw.
     raw: dict | None = Field(
         default=None, sa_column=Column(JSONB(none_as_null=True), nullable=True)
@@ -100,8 +91,41 @@ class CompetitionSeason(CompetitionSeasonBase, table=True):
 
 
 class CompetitionPublic(CompetitionSeasonBase):
+    # The API contract, unchanged — attributes resolved through the FKs.
+    #
+    # These six fields were the 2NF violation itself (§1.1): they depend on the
+    # competition or the season alone, yet were stored on every edition, so
+    # La Liga's name and country sat on 18 rows. They now come from `competition`
+    # and `season`, and the edition row keeps only what is genuinely its own.
+
     id: uuid.UUID
+    country_name: str = Field(max_length=100)
+    competition_name: str = Field(max_length=255)
+    competition_gender: str = Field(max_length=20)
+    competition_youth: bool = False
+    competition_international: bool = False
+    season_name: str = Field(max_length=100)
     match_count: int = 0
+
+    @classmethod
+    def from_row(
+        cls,
+        edition: "CompetitionSeason",
+        competition: "Competition",
+        season: "Season",
+        *,
+        match_count: int = 0,
+    ) -> "CompetitionPublic":
+        return cls(
+            **edition.model_dump(exclude={"raw"}),
+            country_name=competition.country_name,
+            competition_name=competition.name,
+            competition_gender=competition.gender,
+            competition_youth=competition.is_youth,
+            competition_international=competition.is_international,
+            season_name=season.name,
+            match_count=match_count,
+        )
 
 
 class CompetitionsPublic(SQLModel):

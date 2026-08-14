@@ -29,7 +29,7 @@ def read_events(
     possession: int | None = None,
     team_id: uuid.UUID | None = None,
 ) -> Any:
-    events, count = EventService(session).list_by_match(
+    events, count, names = EventService(session).list_by_match(
         match_id,
         skip=skip,
         limit=limit,
@@ -41,7 +41,7 @@ def read_events(
         team_id=team_id,
     )
     return EventsPublic(
-        data=[EventPublic.model_validate(e) for e in events],
+        data=[EventPublic.from_row(e, names) for e in events],
         count=count,
     )
 

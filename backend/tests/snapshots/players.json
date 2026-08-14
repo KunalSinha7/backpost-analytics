@@ -1,5 +1,5 @@
 {
-  "count": 3,
+  "count": 4,
   "data": [
     {
       "id": "<uuid:1>",
@@ -24,6 +24,14 @@
       "nationality": null,
       "nickname": null,
       "statsbomb_id": 95003
+    },
+    {
+      "id": "<uuid:4>",
+      "match_count": 1,
+      "name": "Unregistered Player",
+      "nationality": null,
+      "nickname": null,
+      "statsbomb_id": 96001
     }
   ]
 }

@@ -48,12 +48,11 @@ from typing import Any, NamedTuple, TypeVar
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel, delete
+from sqlmodel import Session, SQLModel
 
 from app.core.config import settings
 from app.models.competition import Competition
 from app.models.match import SoccerMatch
-from app.models.player import Player
 
 # conftest owns the wipe order across the soccer tables; reuse it rather than
 # maintaining a second copy that can drift as tables are added.
@@ -69,6 +68,7 @@ from tests.utils.soccer import (
     create_frame,
     create_lineup,
     create_match,
+    create_player,
 )
 
 SOCCER = f"{settings.API_V1_STR}/soccer"
@@ -95,9 +95,6 @@ def _update(session: Session, obj: T, **fields: Any) -> T:
 
 def _reset(session: Session) -> None:
     _wipe_soccer_data(session)
-    # _wipe_soccer_data does not cover `player`; it has no inbound FKs
-    # (lineup joins it by statsbomb_id), so an unordered delete is safe.
-    session.execute(delete(Player))
     session.commit()
 
 
@@ -108,6 +105,15 @@ def _seed(session: Session) -> Seed:
     defaults, so both the "value" and the "null" rendering of each field is in
     the snapshot.
     """
+    # Players first: events are seeded before lineups, and `create_player`
+    # treats a name as a fixture's identity only when no id is given. Without
+    # this, an event would mint 'Snapshot Bravo' under a derived id and the
+    # lineup would then create a second one under 95002.
+    create_player(session, "Snapshot Alpha", 95001)
+    create_player(session, "Snapshot Bravo", 95002)
+    # No lineup rows: exercises the outer join's match_count == 0 path.
+    create_player(session, "Snapshot Charlie", 95003)
+
     comp_a = _update(
         session,
         create_competition(
@@ -206,13 +212,13 @@ def _seed(session: Session) -> Seed:
             possession=2,
             end_location_x=72.5,
             end_location_y=41.0,
+            possession_team_name="Snapshot Rovers",
+            pass_recipient="Snapshot Bravo",
         ),
         timestamp="00:03:14.159",
-        possession_team_name="Snapshot Rovers",
         play_pattern_name="Regular Play",
         location_x=60.0,
         location_y=40.0,
-        pass_recipient="Snapshot Bravo",
         duration=1.25,
         under_pressure=True,
     )
@@ -232,9 +238,9 @@ def _seed(session: Session) -> Seed:
             possession=3,
             end_location_x=120.0,
             end_location_y=40.0,
+            possession_team_name="Snapshot United",
         ),
         timestamp="00:16:02.000",
-        possession_team_name="Snapshot United",
         play_pattern_name="From Counter",
         location_x=104.0,
         location_y=38.0,
@@ -243,16 +249,13 @@ def _seed(session: Session) -> Seed:
         out=False,
     )
 
-    _update(
+    create_lineup(
         session,
-        create_lineup(
-            session,
-            match_1.id,
-            team_name="Snapshot Rovers",
-            statsbomb_player_id=95001,
-            player_name="Snapshot Alpha",
-            jersey_number=1,
-        ),
+        match_1.id,
+        team_name="Snapshot Rovers",
+        statsbomb_player_id=95001,
+        player_name="Snapshot Alpha",
+        jersey_number=1,
         player_nickname="Alpha",
         country_name="Snapshotland",
     )
@@ -283,21 +286,6 @@ def _seed(session: Session) -> Seed:
         player_name="Snapshot Alpha",
         jersey_number=1,
     )
-
-    session.add_all(
-        [
-            Player(
-                statsbomb_id=95001,
-                name="Snapshot Alpha",
-                nickname="Alpha",
-                nationality="Snapshotland",
-            ),
-            Player(statsbomb_id=95002, name="Snapshot Bravo"),
-            # No lineup rows: exercises the outer join's match_count == 0 path.
-            Player(statsbomb_id=95003, name="Snapshot Charlie"),
-        ]
-    )
-    session.commit()
 
     create_frame(session, match_1.id, "00000000-0000-4000-8000-000000000003")
 

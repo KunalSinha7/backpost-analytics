@@ -17,6 +17,7 @@ from app.models.frame360 import Frame360
 from app.models.lineup import Lineup
 from app.models.lineup_position import LineupPosition
 from app.models.match import SoccerMatch
+from app.models.player import Player
 from app.models.position import Position
 from app.models.team import Team, TeamAlias
 from app.repositories.user import create_user as _original_create_user
@@ -64,6 +65,9 @@ def _wipe_soccer_data(session: Session) -> None:
     session.execute(delete(TeamAlias))
     session.execute(delete(Team))
     session.execute(delete(Position))
+    # Player joins lineup by a real FK now, not by statsbomb_id, so it has to
+    # be wiped here — after lineup — rather than left to individual modules.
+    session.execute(delete(Player))
     session.execute(delete(Competition))
     session.execute(delete(Season))
     session.commit()
@@ -95,9 +99,14 @@ def _reset_users(session: Session) -> None:
     superuser = session.exec(
         select(User).where(User.email == settings.FIRST_SUPERUSER)
     ).first()
-    if superuser is not None and not verify_password(
-        settings.FIRST_SUPERUSER_PASSWORD, superuser.hashed_password
-    ):
+    # verify_password returns (is_valid, upgraded_hash) so callers can migrate
+    # bcrypt hashes to argon2. Truth-testing the tuple instead of unpacking it
+    # is always True, which is exactly how an earlier version of this guard
+    # silently never fired.
+    password_ok = superuser is not None and bool(
+        verify_password(settings.FIRST_SUPERUSER_PASSWORD, superuser.hashed_password)[0]
+    )
+    if superuser is not None and not password_ok:
         superuser.hashed_password = get_password_hash(settings.FIRST_SUPERUSER_PASSWORD)
         session.add(superuser)
         session.commit()

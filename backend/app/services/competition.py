@@ -2,7 +2,7 @@ import logging
 
 from sqlmodel import Session
 
-from app.models.competition import CompetitionSeason
+from app.models.competition import Competition, CompetitionSeason, Season
 from app.repositories.competition import CompetitionRepository
 from app.services.resolver import EntityResolver
 from app.utils.statsbomb import StatsBombCompetitionRow
@@ -21,7 +21,7 @@ class CompetitionService:
         limit: int = 100,
         has_matches: bool = False,
         has_events: bool = False,
-    ) -> tuple[list[tuple[CompetitionSeason, int]], int]:
+    ) -> tuple[list[tuple[CompetitionSeason, Competition, Season, int]], int]:
         return self.repo.list_all(
             skip=skip, limit=limit, has_matches=has_matches, has_events=has_events
         )
@@ -38,25 +38,10 @@ class CompetitionService:
             cid, sid = comp_row.competition_id, comp_row.season_id
 
             if (cid, sid) not in existing:
-                comp = CompetitionSeason(
-                    statsbomb_id=cid,
-                    season_id=sid,
-                    country_name=comp_row.country_name,
-                    competition_name=comp_row.competition_name,
-                    competition_gender=comp_row.competition_gender,
-                    competition_youth=comp_row.competition_youth,
-                    competition_international=comp_row.competition_international,
-                    season_name=comp_row.season_name,
-                    match_updated=comp_row.match_updated,
-                    match_available=comp_row.match_available,
-                    match_updated_360=comp_row.match_updated_360,
-                    match_available_360=comp_row.match_available_360,
-                    raw=comp_row.model_dump(),
-                )
-                # Resolved at ingest, not left to the backfill. A backfill is
-                # one-shot; if ingest does not populate the FKs then every
-                # newly ingested edition arrives unlinked and the split decays
-                # from the first import onward (§6/M1).
+                # Resolved before the row is built, not after: the FKs are
+                # NOT NULL as of Phase 4, so an edition cannot be constructed
+                # without them. Doing it at ingest rather than in a backfill is
+                # what stops the split decaying from the first import (§6/M1).
                 competition = self.resolver.resolve_competition(
                     cid,
                     comp_row.competition_name,
@@ -66,8 +51,25 @@ class CompetitionService:
                     is_international=comp_row.competition_international,
                 )
                 season = self.resolver.resolve_season(sid, comp_row.season_name)
-                comp.competition_id = competition.id if competition else None
-                comp.season_ref_id = season.id if season else None
+                if competition is None or season is None:
+                    logger.warning(
+                        "Skipping competition %s/%s: unresolved competition or season",
+                        cid,
+                        sid,
+                    )
+                    continue
+
+                comp = CompetitionSeason(
+                    statsbomb_id=cid,
+                    season_id=sid,
+                    competition_id=competition.id,
+                    season_ref_id=season.id,
+                    match_updated=comp_row.match_updated,
+                    match_available=comp_row.match_available,
+                    match_updated_360=comp_row.match_updated_360,
+                    match_available_360=comp_row.match_available_360,
+                    raw=comp_row.model_dump(),
+                )
                 self.repo.add(comp)
                 existing.add((cid, sid))
                 imported += 1

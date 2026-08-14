@@ -219,6 +219,48 @@ class EntityResolver:
         self._season_cache[key] = season
         return season
 
+    def resolve_player(
+        self, external_id: Any, name: str | None = None
+    ) -> Player | None:
+        """Get-or-create a player, keyed on the source's id.
+
+        Needed at *event* ingest, not just lineup ingest: events are ingested
+        before lineups (see `_run_ingest`), so a player referenced by an event
+        may not exist yet. Leaving `event.player_id` NULL and waiting for a
+        backfill would mean freshly ingested matches showed no player names at
+        all — a live regression rather than a deferred one.
+        """
+        key = normalize_external_id(external_id)
+        if key is None:
+            return None
+        player = self._player_cache.get(key)
+        if player is None:
+            player = self.session.exec(
+                select(Player).where(
+                    Player.source_id == self.source.id, Player.external_id == key
+                )
+            ).first()
+        if player is None:
+            # `statsbomb_id` is still the unique key on this table, so a player
+            # first seen through lineups and one first seen through events must
+            # converge on the same row.
+            player = self.session.exec(
+                select(Player).where(Player.statsbomb_id == int(key))
+            ).first()
+        if player is None:
+            player = Player(
+                statsbomb_id=int(key),
+                name=name or key,
+                source_id=self.source.id,
+                external_id=key,
+            )
+            self.session.add(player)
+            self.session.flush()
+        else:
+            self.attach_player_source(player)
+        self._player_cache[key] = player
+        return player
+
     def attach_player_source(self, player: Player) -> None:
         """Stamp an existing player row with its source columns.
 

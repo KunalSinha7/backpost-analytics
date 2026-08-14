@@ -6,6 +6,7 @@ from sqlmodel import Session
 from app.models.competition import CompetitionSeason
 from app.models.match import SoccerMatch
 from app.repositories.match import MatchRepository
+from app.services.resolver import EntityResolver
 from app.utils.statsbomb import StatsBombMatchRow
 
 logger = logging.getLogger(__name__)
@@ -15,6 +16,7 @@ class MatchService:
     def __init__(self, session: Session) -> None:
         self.session = session
         self.repo = MatchRepository(session)
+        self.resolver = EntityResolver(session)
 
     def list_matches(
         self,
@@ -24,7 +26,7 @@ class MatchService:
         has_events: bool = False,
         team_name: str | None = None,
         team_id: uuid.UUID | None = None,
-    ) -> tuple[list[SoccerMatch], int, set[uuid.UUID]]:
+    ) -> tuple[list[tuple[SoccerMatch, str, str]], int, set[uuid.UUID]]:
         return self.repo.list_all(
             skip=skip,
             limit=limit,
@@ -68,13 +70,38 @@ class MatchService:
                 if match_row.match_id in existing:
                     continue
 
+                # Resolved at ingest rather than left to a backfill: a
+                # backfill is one-shot, so without this every newly ingested
+                # match arrives without team FKs — and those columns are now
+                # NOT NULL, so it would not arrive at all (§6/M1).
+                extra = match_row.model_dump()
+                home = self.resolver.resolve_team(
+                    extra.get("home_team_id"),
+                    match_row.home_team,
+                    authoritative_name=True,
+                    gender=match_row.home_team_gender,
+                    country_name=match_row.home_team_country_name,
+                )
+                away = self.resolver.resolve_team(
+                    extra.get("away_team_id"),
+                    match_row.away_team,
+                    authoritative_name=True,
+                    gender=match_row.away_team_gender,
+                    country_name=match_row.away_team_country_name,
+                )
+                if home is None or away is None:
+                    logger.warning(
+                        "Skipping match %s: unresolved team ids", match_row.match_id
+                    )
+                    continue
+
                 match = SoccerMatch(
                     statsbomb_id=match_row.match_id,
+                    home_team_id=home.id,
+                    away_team_id=away.id,
                     competition_season_id=competition.id,
                     match_date=match_row.match_date[:20],
                     kick_off=match_row.kick_off[:20] if match_row.kick_off else None,
-                    home_team=match_row.home_team,
-                    away_team=match_row.away_team,
                     home_score=match_row.home_score,
                     away_score=match_row.away_score,
                     stadium=match_row.stadium,

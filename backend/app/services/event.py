@@ -7,6 +7,7 @@ from app.exceptions.event import StatsBombFetchError
 from app.models.event import Event
 from app.repositories.event import EventRepository
 from app.repositories.match import MatchRepository
+from app.services.resolver import EntityResolver
 from app.utils.statsbomb import StatsBombEventRow
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ class EventService:
         self.session = session
         self.event_repo = EventRepository(session)
         self.match_repo = MatchRepository(session)
+        self.resolver = EntityResolver(session)
 
     def list_by_match(
         self,
@@ -41,7 +43,7 @@ class EventService:
         player: str | None = None,
         possession: int | None = None,
         team_id: uuid.UUID | None = None,
-    ) -> tuple[list[Event], int]:
+    ) -> tuple[list[Event], int, dict[uuid.UUID, str]]:
         return self.event_repo.list_by_match(
             match_id,
             skip=skip,
@@ -84,9 +86,38 @@ class EventService:
                     continue
 
                 end_location_x, end_location_y = _extract_end_location(event_row)
-                pass_recipient = getattr(event_row, "pass_recipient", None)
+                extra = event_row.model_dump()
+
+                # team_id and possession_team_id are NOT NULL as of Phase 4, so
+                # an event whose team cannot be resolved is skipped loudly
+                # rather than failing the whole batch on a constraint.
+                team = self.resolver.resolve_team(
+                    extra.get("team_id"), event_row.team or ""
+                )
+                if team is None:
+                    logger.warning("Skipping event %s: unresolved team", event_row.id)
+                    continue
+                possession_team = (
+                    self.resolver.resolve_team(
+                        extra.get("possession_team_id"),
+                        event_row.possession_team or "",
+                    )
+                    or team
+                )
+                player = self.resolver.resolve_player(
+                    extra.get("player_id"), event_row.player
+                )
+                recipient = self.resolver.resolve_player(
+                    extra.get("pass_recipient_id"),
+                    getattr(event_row, "pass_recipient", None),
+                )
+
                 event = Event(
                     statsbomb_id=event_row.id,
+                    team_id=team.id,
+                    possession_team_id=possession_team.id,
+                    player_id=player.id if player else None,
+                    pass_recipient_id=recipient.id if recipient else None,
                     match_id=match.id,
                     index=event_row.index,
                     period=event_row.period,
@@ -95,15 +126,11 @@ class EventService:
                     second=event_row.second,
                     type_name=event_row.type or "",
                     possession=event_row.possession,
-                    possession_team_name=event_row.possession_team,
                     play_pattern_name=event_row.play_pattern,
-                    team=event_row.team or "",
-                    player=event_row.player,
                     location_x=event_row.location[0] if event_row.location else None,
                     location_y=event_row.location[1] if event_row.location else None,
                     end_location_x=end_location_x,
                     end_location_y=end_location_y,
-                    pass_recipient=pass_recipient,
                     duration=event_row.duration,
                     under_pressure=event_row.under_pressure,
                     off_camera=event_row.off_camera,

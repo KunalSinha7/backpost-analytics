@@ -38,7 +38,7 @@ def test_competition_list_all_returns_seeded(db: Session) -> None:
     repo = CompetitionRepository(db)
     rows, count = repo.list_all()
     assert count >= 1
-    assert any(c.statsbomb_id == 1001 for c, _ in rows)
+    assert any(c.statsbomb_id == 1001 for c, *_ in rows)
 
 
 def test_competition_get_existing_keys(db: Session) -> None:
@@ -70,7 +70,7 @@ def test_competition_list_all_has_events_filter(db: Session) -> None:
 
     repo = CompetitionRepository(db)
     rows, count = repo.list_all(has_events=True)
-    ids = [c.id for c, _ in rows]
+    ids = [c.id for c, *_ in rows]
     assert comp_with_events.id in ids
     assert comp_matches_only.id not in ids
     assert count == len(rows)
@@ -84,7 +84,7 @@ def test_competition_list_all_has_events_false_includes_matches_only(
 
     repo = CompetitionRepository(db)
     rows, _ = repo.list_all(has_matches=True, has_events=False)
-    assert any(c.id == comp.id for c, _ in rows)
+    assert any(c.id == comp.id for c, *_ in rows)
 
 
 @contextmanager
@@ -115,7 +115,7 @@ def test_competition_list_all_returns_session_attached_rows(db: Session) -> None
     create_match(db, comp.id, statsbomb_id=10071)
 
     rows, _ = CompetitionRepository(db).list_all()
-    returned = next(c for c, _ in rows if c.id == comp.id)
+    returned = next(c for c, *_ in rows if c.id == comp.id)
 
     assert inspect(returned).persistent, "row is detached from the session"
     assert returned is comp, "row is a copy, not the identity-mapped instance"
@@ -166,7 +166,7 @@ def test_match_list_all(db: Session) -> None:
     repo = MatchRepository(db)
     rows, count, _ = repo.list_all()
     assert count >= 1
-    assert any(m.statsbomb_id == 20001 for m in rows)
+    assert any(m.statsbomb_id == 20001 for m, *_ in rows)
 
 
 def test_match_list_all_filter_by_competition(db: Session) -> None:
@@ -175,7 +175,7 @@ def test_match_list_all_filter_by_competition(db: Session) -> None:
     repo = MatchRepository(db)
     rows, count, _ = repo.list_all(competition_season_id=comp.id)
     assert count >= 1
-    assert all(m.competition_season_id == comp.id for m in rows)
+    assert all(m.competition_season_id == comp.id for m, *_ in rows)
 
 
 def test_match_list_all_has_events_filter(db: Session) -> None:
@@ -186,7 +186,7 @@ def test_match_list_all_has_events_filter(db: Session) -> None:
 
     repo = MatchRepository(db)
     rows, count, _ = repo.list_all(has_events=True)
-    ids = [m.id for m in rows]
+    ids = [m.id for m, *_ in rows]
     assert match_with.id in ids
     assert match_without.id not in ids
 
@@ -264,14 +264,14 @@ def test_event_list_by_match(db: Session) -> None:
     ev = create_event(db, match.id)
 
     repo = EventRepository(db)
-    events, count = repo.list_by_match(match.id)
+    events, count, _ = repo.list_by_match(match.id)
     assert count == 1
     assert events[0].id == ev.id
 
 
 def test_event_list_by_match_empty(db: Session) -> None:
     repo = EventRepository(db)
-    events, count = repo.list_by_match(uuid.uuid4())
+    events, count, _ = repo.list_by_match(uuid.uuid4())
     assert count == 0
     assert events == []
 
@@ -293,7 +293,7 @@ def test_event_list_by_match_filter_by_player(db: Session) -> None:
     create_event(db, match.id, player="Bob")
 
     repo = EventRepository(db)
-    events, count = repo.list_by_match(match.id, player="Alice")
+    events, count, _ = repo.list_by_match(match.id, player="Alice")
     assert count == 1
     assert events[0].id == ev.id
 
@@ -305,7 +305,7 @@ def test_event_list_by_match_filter_by_possession(db: Session) -> None:
     create_event(db, match.id, possession=2)
 
     repo = EventRepository(db)
-    events, count = repo.list_by_match(match.id, possession=1)
+    events, count, _ = repo.list_by_match(match.id, possession=1)
     assert count == 1
     assert events[0].id == ev.id
 
@@ -335,7 +335,7 @@ def test_lineup_list_by_match(db: Session) -> None:
     repo = LineupRepository(db)
     players, count = repo.list_by_match(match.id)
     assert count == 2
-    assert {p.player_name for p in players} == {"Alice", "Bob"}
+    assert {player.name for _, _, player in players} == {"Alice", "Bob"}
 
 
 # ── Frame360Repository ─────────────────────────────────────────────────────
