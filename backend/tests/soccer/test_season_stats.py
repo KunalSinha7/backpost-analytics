@@ -1,10 +1,4 @@
-"""Phase 3: minutes played and per-90 season stats.
-
-This is the capability §1.3 set out to enable — "season stats for one player" —
-which previously required a 4-hop, string-mediated join across 376k unindexed
-rows, and could not produce minutes played at any price because they lived
-inside a JSON array (a 1NF violation).
-"""
+"""Minutes played and per-90 season stats for a single player."""
 
 import uuid
 
@@ -214,12 +208,12 @@ def test_backfill_is_idempotent(db: Session) -> None:
 
 
 def test_per_90_matches_a_hand_computed_value(db: Session) -> None:
-    """The Phase 3 gate (§4): per-90 must match a value computed by hand.
+    """Per-90 must match a value computed by hand.
 
     Raw counts would pass under a broken minutes calculation — only a rate
-    catches it. The arithmetic here is deliberately written out rather than
-    re-derived from the service, so a bug in the service cannot make the
-    expectation move with it.
+    catches it. The arithmetic is deliberately written out rather than
+    re-derived from the service, so a bug there cannot move the expectation
+    with it.
     """
     player_id, season_id = _season_fixture(
         db, base=93004, stints=_FULL_MATCH_STINT, pass_events=10

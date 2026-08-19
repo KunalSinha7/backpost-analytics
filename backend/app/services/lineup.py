@@ -34,16 +34,10 @@ class LineupService:
     ) -> uuid.UUID | None:
         """Map the lineup feed's team name onto one of the match's two teams.
 
-        §1.6/B0 rejected comparing this name against the match's team *names*,
-        because the feeds disagree: the lineup feed says "Marseille" where the
-        match feed says "Olympique de Marseille". The rule it prescribed instead
-        went through `event.team`, which no longer exists after Phase 4.
-
-        `team_alias` supersedes both. The resolver records every spelling it has
-        ever seen — including each team's canonical name — so this is an exact
-        lookup rather than a name comparison, and scoping it to the match's own
-        two teams stops a name shared across clubs from resolving to the wrong
-        one.
+        Comparing against the match's team names directly does not work — feeds
+        disagree on spelling — so this looks the name up in `team_alias`, which
+        holds every spelling seen. Restricting to the match's own two teams
+        stops a name shared by several clubs resolving to the wrong one.
         """
         return self.session.exec(
             select(TeamAlias.team_id).where(
@@ -92,9 +86,8 @@ class LineupService:
                     )
                     if player is None:
                         continue
-                    # Nickname and nationality live on `player` now, so the
-                    # lineup feed's copies update the entity rather than being
-                    # duplicated onto every appearance.
+                    # Fill gaps on the player rather than copying these onto
+                    # every appearance.
                     if player.nickname is None and player_row.player_nickname:
                         player.nickname = player_row.player_nickname
                     if player.nationality is None and player_row.country:
@@ -108,12 +101,9 @@ class LineupService:
                             statsbomb_player_id=player_row.player_id,
                             jersey_number=player_row.jersey_number,
                             started=player_row.is_starter(),
-                            # positions[] and cards[] are dropped by the typed
-                            # fields above and exist nowhere else, so capturing
-                            # the payload here is the only thing standing
-                            # between us and another re-fetch. positions[] in
-                            # particular carries minutes played, which per-90
-                            # season stats depend on.
+                            # Keeps positions[] and cards[], which the typed
+                            # fields above discard. positions[] is the only
+                            # source of minutes played.
                             raw=player_row.model_dump(),
                         )
                     )

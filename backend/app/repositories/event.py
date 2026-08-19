@@ -15,13 +15,9 @@ class EventRepository:
     def _team_ids_for_name(self, name: str) -> list[uuid.UUID]:
         """Every team id a display name could refer to, canonical or alias.
 
-        This is the Marseille bug (§1.2) at its point of failure. `/matches/teams`
-        populates the dropdown from one feed's spelling while events were stored
-        under another, so a string comparison between them matched nothing and
-        the UI showed an empty pitch for a team with thousands of events.
-
-        Looking the name up through `team_alias` is what closes the gap without
-        the caller — or the frontend — changing anything.
+        Callers filter by a name chosen from a dropdown, which may be spelled
+        the way any one feed spells it. Going through `team_alias` means any
+        known spelling finds the team.
         """
         ids = set(self.session.exec(select(Team.id).where(Team.name == name)).all())
         ids |= set(
@@ -85,10 +81,9 @@ class EventRepository:
     def _name_map(self, events: list[Event]) -> dict[uuid.UUID, str]:
         """One id -> name lookup covering every entity the page references.
 
-        Deliberately two queries rather than ORM relationships: `read_events`
-        defaults to `limit=10000`, and four relationship traversals per row
-        would be up to 40,000 lazy loads for one response (§6). Scoped to a
-        single match, this is at most two teams and a few dozen players.
+        Two queries rather than ORM relationships: events are fetched in
+        batches of up to 10,000, and four relationship traversals per row would
+        mean tens of thousands of lazy loads for a single response.
         """
         team_ids = {e.team_id for e in events} | {
             e.possession_team_id for e in events if e.possession_team_id

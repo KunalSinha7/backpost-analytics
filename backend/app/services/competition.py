@@ -38,10 +38,8 @@ class CompetitionService:
             cid, sid = comp_row.competition_id, comp_row.season_id
 
             if (cid, sid) not in existing:
-                # Resolved before the row is built, not after: the FKs are
-                # NOT NULL as of Phase 4, so an edition cannot be constructed
-                # without them. Doing it at ingest rather than in a backfill is
-                # what stops the split decaying from the first import (§6/M1).
+                # Resolved before the row is built: the FKs are NOT NULL, so
+                # the row cannot be constructed without them.
                 competition = self.resolver.resolve_competition(
                     cid,
                     comp_row.competition_name,

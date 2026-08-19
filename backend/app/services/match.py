@@ -70,13 +70,8 @@ class MatchService:
                 if match_row.match_id in existing:
                     continue
 
-                # Resolved at ingest rather than left to a backfill: a
-                # backfill is one-shot, so without this every newly ingested
-                # match arrives without team FKs — and those columns are now
-                # NOT NULL, so it would not arrive at all (§6/M1).
-                # One dump, used for both the FK resolution below and the `raw`
-                # column: they must be the same payload, and calling
-                # model_dump() twice invited them to drift.
+                # One dump feeds both the team lookups below and the `raw`
+                # column, so the two cannot disagree.
                 payload = match_row.model_dump()
                 home = self.resolver.resolve_team(
                     payload.get("home_team_id"),
@@ -122,10 +117,8 @@ class MatchService:
                     match_status=match_row.match_status,
                     last_updated=match_row.last_updated,
                     match_status_360=match_row.match_status_360,
-                    # Retains the nine *_id columns the typed fields drop
-                    # (home_team_id, away_team_id, referee_id, stadium_id,
-                    # manager ids, competition_stage_id). Phase 1 resolves
-                    # team FKs from these instead of re-fetching.
+                    # Keeps the source ids the typed fields above discard
+                    # (referee, stadium, managers, competition stage).
                     raw=payload,
                 )
                 self.repo.add(match)
@@ -138,18 +131,9 @@ class MatchService:
     def backfill_raw(self, competitions: list[CompetitionSeason]) -> int:
         """Populate `raw` on matches ingested before that column existed.
 
-        `ingest` only ever inserts — it skips any match_id it already has — so
-        re-running it will not touch an existing row. Without this path the
-        3,961 rows already in the database keep a NULL `raw` forever.
-
-        Worth doing before Phase 1 rather than during it: that phase resolves
-        home/away team FKs out of this payload, so filling it now turns the
-        team backfill into a pure in-database operation, the same way
-        `event.raw_event` already does for events. Otherwise Phase 1 pays for
-        a second network pass over every competition.
-
-        Idempotent: rows that already have a payload are left alone, so a
-        partial run can simply be repeated.
+        `ingest` only inserts — it skips match ids it already has — so it will
+        never fill this in on an existing row. Idempotent: rows that already
+        have a payload are left alone, so a partial run can be repeated.
         """
         from statsbombpy import sb  # type: ignore[import-untyped]
 
@@ -186,8 +170,7 @@ class MatchService:
                 match.raw = match_row.model_dump()
                 updated += 1
 
-            # Commit per competition to keep transactions bounded, matching
-            # how the event and lineup ingests behave.
+            # Commit per competition to keep transactions bounded.
             self.session.commit()
 
         logger.info("Match raw backfill: %d rows populated", updated)

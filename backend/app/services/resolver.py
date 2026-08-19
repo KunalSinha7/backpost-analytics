@@ -20,16 +20,14 @@ STATSBOMB_SOURCE_KEY = "statsbomb"
 def normalize_external_id(value: Any) -> str | None:
     """Canonicalise a source's entity id to the string form we store.
 
-    Numeric ids arrive in inconsistent shapes from the same payload: a single
-    flattened StatsBomb event carries `team_id: 142` (int) next to
-    `player_id: 3348.0` (float), because pandas widens any column containing a
-    null to float64. Left alone, "142" and "3348.0" would be stored as-is and
-    the SQL backfill — which canonicalises via ::numeric::bigint::text — would
-    match neither. That mismatch does not raise; it silently updates zero rows.
+    The same payload can carry the same kind of id in different shapes —
+    `team_id: 142` (int) beside `player_id: 3348.0` (float), because pandas
+    widens any column containing a null to float64. Stored verbatim, "142" and
+    "3348.0" would never match each other or a plain integer lookup.
 
-    So both sides agree on one rule: integral numerics become their plain
-    integer string, and anything non-numeric is passed through unchanged (other
-    sources use uuids and opaque strings).
+    Integral numbers therefore become their plain integer string; anything
+    non-numeric passes through unchanged, since other sources use uuids and
+    opaque strings.
     """
     if value is None:
         return None
@@ -48,14 +46,12 @@ def normalize_external_id(value: Any) -> str | None:
 class EntityResolver:
     """Get-or-create for the entities shared across feeds.
 
-    Keyed on `(source_id, external_id)` and **never** on name. That is the
-    whole point: StatsBomb's match feed calls team 147 "Olympique de Marseille"
-    while its event feed calls it "Marseille", and keying on the id is what
-    collapses them to one row instead of two. `UNIQUE(source_id, external_id)`
-    backs the same invariant at the database level.
+    Keyed on `(source_id, external_id)` and never on name, because feeds
+    disagree about names: one calls team 147 "Olympique de Marseille", another
+    calls it "Marseille". Keying on the id collapses them to one row.
 
-    Names are still recorded — every variant lands in `team_alias`, so the
-    merge stays auditable and Phase 4 stays reversible.
+    Every name variant seen is still recorded in `team_alias`, which is what
+    lets a lookup by any spelling find the right team.
     """
 
     def __init__(
@@ -65,11 +61,9 @@ class EntityResolver:
         self.teams = TeamRepository(session)
         self.positions = PositionRepository(session)
         self.source = self._get_or_create_source(source_key)
-        # Purely a performance measure, not a correctness one. Session.autoflush
-        # defaults to True, so a pending add() is already visible to the next
-        # select and get-or-create cannot duplicate within a run (§6/M3, which
-        # claimed otherwise and was disproved by probe). This just avoids a
-        # round trip per lookup across ~1.4M resolutions.
+        # Performance only, not correctness: autoflush already makes a pending
+        # add() visible to the next select, so get-or-create cannot duplicate
+        # without these. They save a round trip per lookup over ~1.4M lookups.
         self._team_cache: dict[str, Team] = {}
         self._player_cache: dict[str, Player] = {}
         self._position_cache: dict[str, Position] = {}
@@ -97,11 +91,9 @@ class EntityResolver:
     ) -> Team | None:
         """Get-or-create a team, recording `name` as an alias either way.
 
-        `authoritative_name` encodes the §6/H3 tie-break: when two feeds
-        disagree, the **match feed wins**, because its spelling is what the API
-        emits today — so switching to FK-resolved names does not change any
-        response. Event-feed names only fill in a team the match feed never
-        mentioned.
+        Set `authoritative_name` when the caller's spelling should win over one
+        already stored. Only the match feed does this; other feeds contribute
+        aliases and may create a team never seen before, but never rename one.
         """
         key = normalize_external_id(external_id)
         if key is None:
@@ -123,9 +115,7 @@ class EntityResolver:
         else:
             if authoritative_name and team.name != name:
                 team.name = name
-            # Only ever fill gaps: a team first seen through the event feed has
-            # no gender/country, and the match feed is the only thing that
-            # supplies them.
+            # Fill gaps only — not every feed supplies these.
             if gender is not None and team.gender is None:
                 team.gender = gender
             if country_name is not None and team.country_name is None:
@@ -168,12 +158,10 @@ class EntityResolver:
         is_youth: bool = False,
         is_international: bool = False,
     ) -> Competition | None:
-        """Get-or-create the TIMELESS competition (La Liga, not La Liga 18/19).
+        """Get-or-create the season-independent competition.
 
-        Keyed on StatsBomb's `competition_id`, which is timeless by design —
-        `11` is La Liga across all 18 seasons. Deduplicating on it is what
-        collapses the 80 edition rows into 24 competitions and removes the 2NF
-        violation in §1.1.
+        The source's competition id stays the same across seasons, so this
+        returns one row for La Liga rather than one per La Liga season.
         """
         key = normalize_external_id(external_id)
         if key is None:
@@ -224,11 +212,8 @@ class EntityResolver:
     ) -> Player | None:
         """Get-or-create a player, keyed on the source's id.
 
-        Needed at *event* ingest, not just lineup ingest: events are ingested
-        before lineups (see `_run_ingest`), so a player referenced by an event
-        may not exist yet. Leaving `event.player_id` NULL and waiting for a
-        backfill would mean freshly ingested matches showed no player names at
-        all — a live regression rather than a deferred one.
+        Events are ingested before lineups, so this must be able to create a
+        player the lineup feed has not introduced yet.
         """
         key = normalize_external_id(external_id)
         if key is None:
@@ -241,9 +226,8 @@ class EntityResolver:
                 )
             ).first()
         if player is None:
-            # `statsbomb_id` is still the unique key on this table, so a player
-            # first seen through lineups and one first seen through events must
-            # converge on the same row.
+            # Fall back to the legacy unique key so a player already created by
+            # another feed is reused rather than duplicated.
             player = self.session.exec(
                 select(Player).where(Player.statsbomb_id == int(key))
             ).first()
@@ -262,13 +246,7 @@ class EntityResolver:
         return player
 
     def attach_player_source(self, player: Player) -> None:
-        """Stamp an existing player row with its source columns.
-
-        Players are not get-or-create here: the table predates this phase and
-        is populated from lineups, keyed on `statsbomb_id`. This backfills the
-        provenance columns beside that id rather than re-identifying anyone —
-        the rename of `statsbomb_id` itself was cut from the plan (§6/H1).
-        """
+        """Fill in the source/external id on a player that predates them."""
         if player.source_id is None:
             player.source_id = self.source.id
         if player.external_id is None:

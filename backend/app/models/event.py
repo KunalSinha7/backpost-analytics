@@ -33,23 +33,11 @@ class Event(EventBase, table=True):
     __table_args__ = (Index("ix_event_match_id_index", "match_id", "index"),)
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     raw_event: dict = Field(default_factory=dict, sa_type=JSON)
-    # All on the table class, not EventBase: EventPublic must not change shape.
-    # `team` / `player` / `pass_recipient` keep serving the API unchanged, and
-    # the ids below are populated beside them for the season-stats query.
+    # Not index=True: these are the leading columns of composite indexes
+    # declared in the migrations, which single-column indexes would duplicate.
     #
-    # Backfilled from raw_event, which covers 100% of rows — no re-fetch. Note
-    # the ids arrive as float strings ("7626.0") because pandas widens nullable
-    # int columns to float64, so casts must go ::numeric::bigint; a bare ::int
-    # throws (§1.5/B1).
-    # team_id/player_id are deliberately NOT index=True. §2.2 specifies the
-    # composite indexes (player_id, match_id) and (team_id, match_id) for the
-    # season-stats query in Phase 3; single-column indexes here would be
-    # redundant with those (same leading column) and would have to be dropped
-    # again. Same reasoning that made ix_event_match_id_index composite.
-    # NOT NULL as of Phase 4 — 0 nulls across all 1,365,934 rows. player_id
-    # and pass_recipient_id stay nullable: 5,516 events (Half Start, Half End
-    # and friends) genuinely have no player, and forcing a value there would
-    # mean inventing one.
+    # player_id and pass_recipient_id are nullable because some events (Half
+    # Start, Half End and similar) genuinely have no player.
     team_id: uuid.UUID = Field(foreign_key="team.id")
     possession_team_id: uuid.UUID = Field(foreign_key="team.id")
     player_id: uuid.UUID | None = Field(default=None, foreign_key="player.id")
@@ -61,13 +49,8 @@ class Event(EventBase, table=True):
 
 
 class EventPublic(EventBase):
-    # The API contract, unchanged — names resolved rather than stored.
-    #
-    # §6 warns specifically about this path: `read_events` defaults to
-    # `limit=10000`, so resolving these through ORM relationships would mean up
-    # to four lazy loads per row. The service instead builds one id -> name map
-    # per match (at most two teams and a few dozen players) and maps in memory.
-
+    # Names are resolved by the service from an id -> name map, not by ORM
+    # relationships, which would be four lazy loads per row on a large page.
     id: uuid.UUID
     team: str = Field(max_length=255)
     player: str | None = Field(default=None, max_length=255)

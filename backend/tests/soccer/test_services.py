@@ -204,7 +204,7 @@ def _matches_df_with_ids(match_id: int) -> pd.DataFrame:
     """A match row carrying the *_id columns the typed fields drop.
 
     StatsBombMatchRow declares none of these; they survive only because
-    _StatsBombRow sets extra="allow". Phase 1 resolves team FKs from them.
+    _StatsBombRow sets extra="allow", and team FKs are resolved from them.
     """
     df = _matches_df(match_id)
     df["home_team_id"] = 147

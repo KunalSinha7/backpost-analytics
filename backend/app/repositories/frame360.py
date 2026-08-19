@@ -19,8 +19,8 @@ class Frame360Repository:
     def event_ids_by_statsbomb_id(self, match_id: uuid.UUID) -> dict[str, uuid.UUID]:
         """Map this match's event statsbomb ids to their primary keys.
 
-        Lets frame ingest fill `frame360.event_id` as it goes. Events are
-        ingested before frames, so the rows are already there.
+        Lets frame ingest fill `frame360.event_id` as it goes, since events are
+        always ingested before frames.
         """
         from app.models.event import Event
 

@@ -9,15 +9,8 @@ from app.models.competition import CompetitionSeason
 
 class SoccerMatchBase(SQLModel):
     statsbomb_id: int = Field(index=True, unique=True)
-    # Renamed from `competition_id` in Phase 2. After the split that name is
-    # actively wrong: a `competition` table now exists and means the timeless
-    # entity, so `competition_id` here would point at an edition while reading
-    # as though it pointed at La Liga. Unlike the `statsbomb_id` rename that
-    # §6/H1 cut, this one is not cosmetic — leaving it makes the schema lie.
-    #
-    # Indexed: /competitions?has_events=true correlates on this column, and
-    # without it the planner seq-scans soccer_match once per competition —
-    # measured at 14,136 ms vs 11.5 ms with the index on the same data.
+    # Indexed: listing competitions correlates on this column, and without it
+    # the planner seq-scans soccer_match once per competition.
     competition_season_id: uuid.UUID = Field(
         foreign_key="competition_season.id", index=True
     )
@@ -40,11 +33,6 @@ class SoccerMatchBase(SQLModel):
     match_status: str | None = Field(default=None, max_length=50)
     last_updated: str | None = Field(default=None, max_length=50)
     match_status_360: str | None = Field(default=None, max_length=50)
-    # NOT NULL as of Phase 4 — verified 0 nulls across all 3,961 rows before the
-    # constraint was applied. Team identity now lives in one place; the
-    # `home_team`/`away_team` strings that used to sit beside these are gone
-    # from the table and are resolved for the API instead (see
-    # SoccerMatchPublic).
     home_team_id: uuid.UUID = Field(foreign_key="team.id", index=True)
     away_team_id: uuid.UUID = Field(foreign_key="team.id", index=True)
 
@@ -55,8 +43,7 @@ class SoccerMatch(SoccerMatchBase, table=True):
     competition_season: CompetitionSeason | None = Relationship(
         back_populates="matches"
     )
-    # Declared here and not on SoccerMatchBase so it stays out of
-    # SoccerMatchPublic — same placement as Event.raw_event.
+    # On the table class, not the Base, to keep it out of SoccerMatchPublic.
     # none_as_null: see the note on Lineup.raw.
     raw: dict | None = Field(
         default=None, sa_column=Column(JSONB(none_as_null=True), nullable=True)
@@ -64,14 +51,8 @@ class SoccerMatch(SoccerMatchBase, table=True):
 
 
 class SoccerMatchPublic(SoccerMatchBase):
-    # The API contract, unchanged — but no longer backed by stored strings.
-    #
-    # §3's rule is that the strings leave the *tables*, not the *API*. These two
-    # fields used to be columns on `soccer_match`, duplicated on every one of the
-    # 3,961 rows and free to drift from `team.name` — which is exactly how the
-    # Marseille bug happened. They are now resolved through `home_team_id` /
-    # `away_team_id` by the repository, which selects them as labelled columns in
-    # the same query rather than traversing a relationship.
+    # Team names are resolved from the FKs by the repository, which selects
+    # them as labelled columns in the same query.
 
     id: uuid.UUID
     home_team: str = Field(max_length=255)

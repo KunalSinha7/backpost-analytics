@@ -352,8 +352,8 @@ export class SoccerService {
      * Read Player Season Stats
      * Season stats for one player, with per-90 rates.
      *
-     * `season_id` is the `season` entity's id (Phase 2), not StatsBomb's integer.
-     * Omit it for career totals across everything ingested.
+     * `season_id` is the `season` table's uuid, not StatsBomb's integer season
+     * id. Omit it for career totals across everything ingested.
      * @param data The data for the request.
      * @param data.playerId
      * @param data.seasonId

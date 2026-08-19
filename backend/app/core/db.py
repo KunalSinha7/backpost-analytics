@@ -3,22 +3,12 @@ from sqlmodel import Session, create_engine, select
 from app.core.config import settings
 from app.models import User, UserCreate
 
-# Every table model is imported here, not just the ones this module uses, and
-# the unused ones are load-bearing.
-#
-# `CompetitionSeason.matches` targets "SoccerMatch" as a string forward
-# reference — it has to, since `app.models.match` imports `CompetitionSeason`
-# and a direct import would be circular. SQLAlchemy resolves that name when it
-# configures mappers, which fails outright if the class was never imported:
-#
-#   InvalidRequestError: When initializing mapper Mapper[CompetitionSeason],
-#   expression 'SoccerMatch' failed to locate a name ('SoccerMatch')
-#
-# The FastAPI app never hits this because its routes import everything
-# transitively. Standalone scripts do: `python -m app.backfill_lineup_positions`
-# crashed on a freshly built database for precisely this reason, and only
-# there. Importing them at the one choke point every entry point already goes
-# through — this module, for `engine` — fixes all of them at once.
+# The unused imports below are load-bearing. Relationships between models are
+# declared with string forward references to avoid circular imports, and
+# SQLAlchemy can only resolve those names for classes that have been imported.
+# Importing every model here — the one module all entry points reach, for
+# `engine` — means standalone scripts get a fully configured mapper too, not
+# just the app, whose routes happen to import everything anyway.
 from app.models.competition import (  # noqa: F401
     Competition,
     CompetitionSeason,

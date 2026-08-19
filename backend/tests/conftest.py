@@ -30,14 +30,12 @@ _test_user_ids: set[uuid.UUID] = set()
 def _assert_disposable_database() -> None:
     """Refuse to run against a database that isn't ours to destroy.
 
-    The fixtures below delete every row of soccer data unconditionally. Because
-    the engine is built from ``settings.POSTGRES_DB`` at import time, pointing
-    the suite at the development database is a single env var away — and on
-    2026-08-06 that is exactly what happened, taking 376k events with it.
-
-    Requiring a ``_test`` suffix makes the mistake loud instead of destructive.
-    ``scripts/tests-start.sh`` sets this; running pytest by hand without it
-    fails here rather than halfway through the first fixture.
+    The fixtures below delete every row of soccer data unconditionally, and the
+    engine is built from ``settings.POSTGRES_DB`` at import time — so pointing
+    the suite at the development database is one env var away, and has wiped it
+    before. Requiring a ``_test`` suffix makes that mistake loud instead of
+    destructive. ``scripts/tests-start.sh`` sets it; running pytest by hand
+    without it fails here rather than midway through the first fixture.
     """
     db_name = settings.POSTGRES_DB
     if not db_name.endswith("_test"):
@@ -58,15 +56,12 @@ def _wipe_soccer_data(session: Session) -> None:
     session.execute(delete(Lineup))
     session.execute(delete(SoccerMatch))
     session.execute(delete(CompetitionSeason))
-    # After the rows that reference them. Teams and positions are wiped for the
-    # same reason as everything above, plus one specific to them: they carry
-    # UNIQUE(source_id, external_id), so a leaked row from a previous run makes
-    # the next resolver test fail on a constraint rather than on its assertion.
+    # These carry UNIQUE(source_id, external_id), so a row leaked by a previous
+    # run makes the next resolver test fail on a constraint rather than on its
+    # own assertion.
     session.execute(delete(TeamAlias))
     session.execute(delete(Team))
     session.execute(delete(Position))
-    # Player joins lineup by a real FK now, not by statsbomb_id, so it has to
-    # be wiped here — after lineup — rather than left to individual modules.
     session.execute(delete(Player))
     session.execute(delete(Competition))
     session.execute(delete(Season))
@@ -82,15 +77,11 @@ def _tracking_create_user(**kwargs: object) -> User:
 def _reset_users(session: Session) -> None:
     """Return the user table to a known state before the run starts.
 
-    Cleanup at teardown only runs when the suite exits normally, so a crashed
-    run leaks every user it created — and the next run fails on whichever test
-    re-creates one of them. That is not hypothetical: two separate false
-    failures in this suite traced back to 24 leaked users and a superuser whose
-    password a half-finished run had changed.
-
-    `init_db` cannot repair either, because it only acts when the superuser is
-    *absent*. Cleaning up front instead of only at exit makes the suite
-    self-healing regardless of how the previous run ended.
+    Teardown only runs when the suite exits normally, so a crashed run leaks
+    every user it created and the next run fails on whichever test re-creates
+    one. `init_db` cannot repair this, since it only acts when the superuser is
+    absent. Cleaning up front makes the suite self-healing regardless of how
+    the previous run ended.
     """
     _assert_disposable_database()
     session.execute(delete(User).where(col(User.is_superuser).is_(False)))
@@ -99,10 +90,8 @@ def _reset_users(session: Session) -> None:
     superuser = session.exec(
         select(User).where(User.email == settings.FIRST_SUPERUSER)
     ).first()
-    # verify_password returns (is_valid, upgraded_hash) so callers can migrate
-    # bcrypt hashes to argon2. Truth-testing the tuple instead of unpacking it
-    # is always True, which is exactly how an earlier version of this guard
-    # silently never fired.
+    # verify_password returns (is_valid, upgraded_hash), so the [0] matters:
+    # truth-testing the tuple itself is always True.
     password_ok = superuser is not None and bool(
         verify_password(settings.FIRST_SUPERUSER_PASSWORD, superuser.hashed_password)[0]
     )

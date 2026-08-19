@@ -1,10 +1,8 @@
-"""Golden-response + OpenAPI snapshot harness (Phase 0, §7.1).
+"""Golden-response and OpenAPI snapshot tests.
 
-Every later phase of ``database-normalization.md`` gates on "responses
-identical except the enumerated drift set" and "diff ``openapi.json`` per
-phase". This module is that gate. The snapshots under
-``backend/tests/snapshots/`` are committed files; a phase that changes an API
-response or the schema must show the delta as a reviewed diff.
+The snapshots under ``backend/tests/snapshots/`` are committed files, so any
+change to an API response or to the schema shows up as a reviewable diff
+rather than passing silently.
 
 Regenerating
 ------------
@@ -307,9 +305,8 @@ def _get(client: TestClient, path: str, **params: Any) -> Any:
 
 
 # ── Schema ────────────────────────────────────────────────────────────────
-# Database-independent, and the only check that sees field renames and
-# changes to a model's `required` list (§6) — neither shows up in a
-# response-body diff.
+# Database-independent, and the only check that catches field renames and
+# changes to a model's `required` list — neither shows up in a response diff.
 
 
 def test_openapi_schema_snapshot(client: TestClient) -> None:

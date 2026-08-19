@@ -698,7 +698,7 @@
         "type": "object"
       },
       "PlayerSeasonStats": {
-        "description": "Season stats for one player — the capability §1.3 set out to enable.\n\nBefore this, answering it meant a 4-hop string-mediated join across 376k\nunindexed rows, and minutes played were unavailable at any price because\nthey lived inside a JSON array.",
+        "description": "Appearances, minutes and per-90 event rates for one player.",
         "properties": {
           "appearances": {
             "title": "Appearances",
@@ -2441,7 +2441,7 @@
     },
     "/api/v1/soccer/players/{player_id}/stats": {
       "get": {
-        "description": "Season stats for one player, with per-90 rates.\n\n`season_id` is the `season` entity's id (Phase 2), not StatsBomb's integer.\nOmit it for career totals across everything ingested.",
+        "description": "Season stats for one player, with per-90 rates.\n\n`season_id` is the `season` table's uuid, not StatsBomb's integer season\nid. Omit it for career totals across everything ingested.",
         "operationId": "readPlayerSeasonStats",
         "parameters": [
           {

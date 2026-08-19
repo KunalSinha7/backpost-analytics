@@ -1,11 +1,7 @@
 """Snapshot I/O for the golden-response + OpenAPI harness.
 
-Phase 0 of the normalization plan (``database-normalization.md`` §7.1) requires
-committed snapshots that every later phase diffs against, so that "responses
-identical except the enumerated drift set" is a check a machine can run.
-
-Snapshots live in ``backend/tests/snapshots/`` and are **never written
-implicitly**: a missing or drifted snapshot fails the test. Re-recording is a
+Snapshots live in ``backend/tests/snapshots/`` and are never written
+implicitly: a missing or drifted snapshot fails the test. Re-recording is a
 deliberate act that produces a reviewable git diff — see
 ``tests/test_api_snapshots.py`` for the command.
 """

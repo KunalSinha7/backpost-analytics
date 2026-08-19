@@ -12,11 +12,8 @@ from app.models.team import Team
 class MatchRepository:
     """Reads matches with their team names resolved through the FKs.
 
-    The names used to be columns on `soccer_match`, repeated on every row and
-    free to drift from `team.name` — which is how the Marseille bug happened.
-    They are now selected as labelled columns from joined `team` aliases, the
-    same shape `CompetitionRepository.list_all` already used for `match_count`:
-    one query, no lazy loads, no relationship traversal (§3).
+    Names come from joined `team` aliases as labelled columns rather than
+    relationship traversal, so listing matches stays a single query.
     """
 
     def __init__(self, session: Session) -> None:
@@ -36,9 +33,9 @@ class MatchRepository:
         team_name: str | None = None,
         team_id: uuid.UUID | None = None,
     ) -> tuple[list[tuple[SoccerMatch, str, str]], int, set[uuid.UUID]]:
-        # Annotated Any because `aliased()` returns a runtime proxy whose
-        # attributes are Column objects, while static analysis sees the model's
-        # declared `str`. Typing it honestly here beats a per-line ignore.
+        # Cast to Any because `aliased()` returns a runtime proxy whose
+        # attributes are Column objects, while type checkers see the model's
+        # declared types.
         home = cast(Any, aliased(Team))
         away = cast(Any, aliased(Team))
 
@@ -64,9 +61,6 @@ class MatchRepository:
         if competition_season_id is not None:
             both(SoccerMatch.competition_season_id == competition_season_id)
         if team_id is not None:
-            # Exact, unlike the ILIKE `team_name` search below: an id either is
-            # or is not this match's team, with no substring ambiguity — which
-            # is the point of exposing it (§6/H4).
             both(
                 or_(
                     SoccerMatch.home_team_id == team_id,
@@ -76,8 +70,7 @@ class MatchRepository:
         if team_name is not None:
             words = team_name.strip().split()
             if words:
-                # Searches the canonical team name rather than a stored copy, so
-                # a match is found under whichever spelling the team is filed by.
+                # Every word must appear, in either team's name.
                 both(
                     or_(
                         and_(*[home.name.ilike(f"%{w}%") for w in words]),
@@ -115,9 +108,8 @@ class MatchRepository:
     ) -> list[str]:
         """Distinct team names for the filter dropdown.
 
-        Now sourced from `team.name`, so the names offered here are exactly the
-        ones the event filter resolves against — the mismatch between this list
-        and `event.team` was the Marseille bug's delivery mechanism.
+        Sourced from `team.name` so the names offered are exactly the ones the
+        event filter can resolve.
         """
 
         def _team_select(fk: Any, alias: Any) -> Select[Any]:
@@ -151,11 +143,7 @@ class MatchRepository:
     def list_for_competition(
         self, competition_statsbomb_id: int, season_id: int
     ) -> list[SoccerMatch]:
-        """Matches of one edition, addressed by the source's own ids.
-
-        Those ids now live on `competition.external_id` / `season.external_id`
-        rather than on the edition row, so this resolves through the FKs.
-        """
+        """Matches of one competition season, addressed by the source's own ids."""
         from app.models.competition import Competition, CompetitionSeason, Season
 
         comp = self.session.exec(

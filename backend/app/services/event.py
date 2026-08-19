@@ -88,9 +88,9 @@ class EventService:
                 end_location_x, end_location_y = _extract_end_location(event_row)
                 extra = event_row.model_dump()
 
-                # team_id and possession_team_id are NOT NULL as of Phase 4, so
-                # an event whose team cannot be resolved is skipped loudly
-                # rather than failing the whole batch on a constraint.
+                # team_id and possession_team_id are NOT NULL, so an event
+                # whose team cannot be resolved is skipped loudly rather than
+                # failing the whole batch on a constraint violation.
                 team = self.resolver.resolve_team(
                     extra.get("team_id"), event_row.team or ""
                 )

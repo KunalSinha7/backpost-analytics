@@ -160,8 +160,8 @@ def test_event_row_still_retains_extras() -> None:
     assert row.team == "Marseille"
     assert dumped["team_id"] == 220
     assert dumped["pass_end_location"] == [60.0, 40.0]
-    # Nullable id columns arrive from pandas as float64 — see §1.5/B1, which is
-    # why the backfill cast must be ::numeric::bigint rather than ::int.
+    # Nullable id columns arrive from pandas as float64, so any SQL cast over
+    # them must go through ::numeric::bigint rather than a bare ::int.
     assert dumped["player_id"] == 7626.0
     assert dumped["pass_recipient_id"] == 3501.0
 

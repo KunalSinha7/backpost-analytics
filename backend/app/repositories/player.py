@@ -27,11 +27,6 @@ class PlayerRepository:
 
         stmt = (
             select(Player, func.count(col(Lineup.id)).label("match_count"))
-            # Joined on the FK, not on `statsbomb_player_id == statsbomb_id`.
-            # That soft integer join is precisely the "player identity split
-            # three ways with no FK" §1.3 set out to remove; Phase 1 created the
-            # FK and this query was the last caller still ignoring it. Verified
-            # equivalent on the current data: 829 players, 0 disagreements.
             .outerjoin(
                 Lineup,
                 col(Lineup.player_id) == col(Player.id),
@@ -62,23 +57,10 @@ class PlayerRepository:
         Appearances counts matches where the player actually took the field — a
         named substitute who never came on has no stint, so they do not count.
 
-        **Minutes are the union of on-pitch intervals, not the sum of stint
-        durations.** Summing looks equivalent and is not: StatsBomb's lineup
-        feed emits overlapping stints on some knockout matches, where the clock
-        appears to restart mid-game. Messi's 2022 final reads:
-
-            stint 1  from 00:00  (period 1) -> to 115:32 (period 4)
-            stint 2  from 115:32 (period 4) -> to  28:11 (period 1)   <- backward
-            stint 3  from 28:19  (period 1) -> to null, "Final Whistle"
-
-        Summed, that is 213 minutes of a 126-minute match. Merging the
-        intervals gives 125.97 — he played all of it, which is correct.
-
-        Measured on the 2022 World Cup: 42 of 1,995 lineups contain a backward
-        clock and 17 exceeded their own match length, the worst by 87 minutes.
-        None of it showed up in the Ligue 1 data Phase 3 was validated against,
-        because that season has no extra time — every match ended under 99
-        minutes, so no stint could overlap far enough to notice.
+        Minutes are the union of on-pitch intervals, not the sum of stint
+        durations. The two are not equivalent: some stints overlap, because the
+        source occasionally restarts the clock mid-match, and summing those
+        credits a player with more minutes than the match lasted.
         """
         sql = """
             WITH match_end AS (

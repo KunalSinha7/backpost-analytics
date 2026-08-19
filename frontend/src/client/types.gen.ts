@@ -120,11 +120,7 @@ export type PlayerPublic = {
 };
 
 /**
- * Season stats for one player — the capability §1.3 set out to enable.
- *
- * Before this, answering it meant a 4-hop string-mediated join across 376k
- * unindexed rows, and minutes played were unavailable at any price because
- * they lived inside a JSON array.
+ * Appearances, minutes and per-90 event rates for one player.
  */
 export type PlayerSeasonStats = {
     player_id: string;

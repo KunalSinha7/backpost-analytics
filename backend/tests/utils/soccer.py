@@ -1,11 +1,8 @@
 """Fixture builders for the soccer domain.
 
-After the Phase 4 contract step the name columns are gone, so these helpers
-resolve entities instead of writing strings. They deliberately keep their old
-signatures — callers still pass `home_team="Home FC"` — and get-or-create the
-`team` / `player` / `competition` / `season` rows behind the scenes. Keeping the
-call sites stable is what let the contract phase land without rewriting what
-every test was actually asserting.
+Callers pass plain names — `home_team="Home FC"` — and these helpers
+get-or-create the `team` / `player` / `competition` / `season` rows behind
+them, so tests state what they mean without assembling an entity graph.
 """
 
 import uuid
@@ -72,11 +69,9 @@ def create_player(db: Session, name: str, statsbomb_id: int | None = None) -> Pl
 
 
 def create_competition(db: Session, **kwargs: object) -> CompetitionSeason:
-    """An *edition* row plus the competition and season it points at.
+    """A `CompetitionSeason` plus the competition and season it points at.
 
-    After the Phase 2 split `Competition` means the timeless entity, so the
-    thing tests want — one row per (competition, season), which is what
-    /competitions serves — is a CompetitionSeason.
+    That, not `Competition`, is what /competitions serves and what tests want.
     """
     statsbomb_id = int(kwargs.get("statsbomb_id", 999))  # type: ignore[arg-type]
     season_id = int(kwargs.get("season_id", 999))  # type: ignore[arg-type]

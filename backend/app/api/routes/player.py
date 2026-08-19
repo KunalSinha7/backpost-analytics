@@ -43,8 +43,8 @@ def read_player_season_stats(
 ) -> Any:
     """Season stats for one player, with per-90 rates.
 
-    `season_id` is the `season` entity's id (Phase 2), not StatsBomb's integer.
-    Omit it for career totals across everything ingested.
+    `season_id` is the `season` table's uuid, not StatsBomb's integer season
+    id. Omit it for career totals across everything ingested.
     """
     stats = PlayerService(session).get_season_stats(player_id, season_id)
     if stats is None:

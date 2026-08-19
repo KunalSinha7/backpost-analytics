@@ -21,12 +21,9 @@ class Player(PlayerBase, table=True):
         UniqueConstraint("source_id", "external_id", name="uq_player_source_ext"),
     )
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    # Added beside `statsbomb_id`, which stays. Renaming it was cut from the
-    # plan (§6/H1): it is in the `required` list of five public schemas and is a
-    # rendered UI column, so the rename is a breaking OpenAPI change delivering
-    # zero capability. The two can coexist until a second source actually lands.
-    #
-    # On the table class so PlayerPublic is unaffected.
+    # Nullable, and alongside the older `statsbomb_id` rather than replacing
+    # it: that column is part of the public API and cannot be renamed without
+    # breaking clients.
     source_id: uuid.UUID | None = Field(
         default=None, foreign_key="data_source.id", index=True
     )
@@ -52,12 +49,7 @@ class PlayerStatLine(SQLModel):
 
 
 class PlayerSeasonStats(SQLModel):
-    """Season stats for one player — the capability §1.3 set out to enable.
-
-    Before this, answering it meant a 4-hop string-mediated join across 376k
-    unindexed rows, and minutes played were unavailable at any price because
-    they lived inside a JSON array.
-    """
+    """Appearances, minutes and per-90 event rates for one player."""
 
     player_id: uuid.UUID
     player_name: str

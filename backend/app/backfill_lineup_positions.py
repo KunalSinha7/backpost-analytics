@@ -1,11 +1,10 @@
-"""One-shot Phase 3 backfill: flatten lineup.positions[] into lineup_position.
+"""One-shot backfill: flatten lineup.positions[] into lineup_position.
 
 Run inside the backend container:
 
     python -m app.backfill_lineup_positions
 
-Reads `lineup.raw` (captured in Phase 0) plus the event table for match end
-times. Safe to re-run: lineups that already have stints are skipped.
+Safe to re-run: lineups that already have stints are skipped.
 """
 
 import json

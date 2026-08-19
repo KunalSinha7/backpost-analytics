@@ -26,35 +26,21 @@ class Lineup(LineupBase, table=True):
         ),
     )
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    # On the table class, not LineupBase: LineupPublic must not change shape in
-    # this phase. `team_name` / `statsbomb_player_id` keep serving the API.
-    #
-    # team_id is resolved through the *event* feed, never against the parent
-    # match's two teams — see §1.6/B0. Scoping a name comparison to two
-    # candidates is not an id match, and it fails on the 20 Marseille rows.
-    # NOT NULL as of Phase 4 — 0 nulls across all 13,650 rows.
     team_id: uuid.UUID = Field(foreign_key="team.id", index=True)
     player_id: uuid.UUID = Field(foreign_key="player.id", index=True)
-    # Declared here and not on LineupBase so it stays out of LineupPublic —
-    # same placement as Event.raw_event. SQL NULL means "ingested before this
-    # column existed", as distinct from a captured-but-empty payload.
+    # On the table class, not the Base, to keep it out of LineupPublic.
     #
-    # none_as_null is what makes that distinction real: without it SQLAlchemy
-    # writes Python None as the JSON `null` literal, which is IS NOT NULL in
-    # SQL, so "never captured" becomes indistinguishable from "captured null".
+    # none_as_null makes SQL NULL mean "never captured": without it SQLAlchemy
+    # writes Python None as the JSON `null` literal, which IS NOT NULL matches,
+    # making an uncaptured payload indistinguishable from a captured empty one.
     raw: dict | None = Field(
         default=None, sa_column=Column(JSONB(none_as_null=True), nullable=True)
     )
 
 
 class LineupPublic(LineupBase):
-    # The API contract, unchanged — names resolved through the FKs.
-    #
-    # `player_name` and `player_nickname` were duplicated onto every one of a
-    # player's appearances; `team_name` onto every squad member of every match.
-    # They now come from `player` and `team`, which is what §1.3 meant by player
-    # identity being split three ways with no FK.
-
+    # Player and team names are resolved from the FKs rather than stored on
+    # every appearance.
     id: uuid.UUID
     team_name: str = Field(max_length=255)
     player_name: str = Field(max_length=255)

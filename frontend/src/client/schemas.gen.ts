@@ -696,11 +696,7 @@ export const PlayerSeasonStatsSchema = {
     type: 'object',
     required: ['player_id', 'player_name', 'appearances', 'minutes_played', 'stats'],
     title: 'PlayerSeasonStats',
-    description: `Season stats for one player — the capability §1.3 set out to enable.
-
-Before this, answering it meant a 4-hop string-mediated join across 376k
-unindexed rows, and minutes played were unavailable at any price because
-they lived inside a JSON array.`
+    description: 'Appearances, minutes and per-90 event rates for one player.'
 } as const;
 
 export const PlayerStatLineSchema = {

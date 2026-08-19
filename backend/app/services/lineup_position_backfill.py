@@ -16,19 +16,16 @@ logger = logging.getLogger(__name__)
 class EmptyBackfillInputError(RuntimeError):
     """Raised when the tables this backfill reads are empty.
 
-    Guards the failure mode in §7.1a: the test suite deletes every row of
-    soccer data, so "write migration -> run tests -> run backfill" destroys
-    the backfill's own input. It would then succeed against empty tables and
-    report zero rows — a false green indistinguishable from a clean run.
+    Without it an empty input would report zero rows written and look
+    indistinguishable from a successful run.
     """
 
 
 def parse_clock(value: str | None) -> int | None:
-    """Parse StatsBomb's "MM:SS" match clock into seconds from kick-off.
+    """Parse a "MM:SS" match clock into seconds from kick-off.
 
-    Verified against all 15,276 stints in the dev data: every one matches
-    ``^\\d+:\\d{2}$``, and minutes run past 60 for second-half stints
-    ("69:35"), so this is elapsed match time rather than a wall clock.
+    Minutes are elapsed match time, not a wall clock, so they run past 60
+    ("69:35") and must not be treated as an hours/minutes pair.
     """
     if value is None:
         return None
@@ -55,9 +52,8 @@ class LineupPositionReport:
 class LineupPositionBackfillService:
     """Flattens `lineup.raw['positions']` into `lineup_position` rows.
 
-    Reads only `lineup.raw`, captured in Phase 0, plus the event table for match
-    end times — no network access. Idempotent: lineups that already have stints
-    are skipped, so a partial run can be repeated.
+    Reads only the database — no network access. Idempotent: lineups that
+    already have stints are skipped, so a partial run can be repeated.
     """
 
     def __init__(self, session: Session) -> None:
@@ -70,17 +66,14 @@ class LineupPositionBackfillService:
         if with_raw == 0:
             raise EmptyBackfillInputError(
                 "Refusing to backfill: no lineup has a `raw` payload, which is "
-                "the only place positions[] exists. Re-ingest lineups first "
-                "(§7.1a — a test run deletes them)."
+                "the only place positions[] exists. Re-ingest lineups first."
             )
 
     def _match_end_seconds(self) -> dict[uuid.UUID, int]:
         """Last observed second of each match, from its own events.
 
-        This is what an open-ended stint resolves to. A flat 90 minutes would
-        be wrong for every match — the real final whistle in this data lands
-        between 90.2 and 91.0 minutes — and per-90 rates are exactly sensitive
-        to that difference.
+        What an open-ended stint resolves to. Assuming a flat 90 minutes would
+        be wrong for every match, and per-90 rates are sensitive to it.
         """
         rows = self.session.execute(
             text(
@@ -96,12 +89,8 @@ class LineupPositionBackfillService:
     def build_positions(self) -> int:
         """Build the position vocabulary from `lineup.raw`.
 
-        This moved here when the Phase 1 backfill was retired, and it belongs
-        here: §2.2 claimed `event.position_id` came from `raw_event`, but that
-        key does not exist — statsbombpy flattens StatsBomb's nested
-        `position: {id, name}` to the name alone. The numeric ids survive only
-        in `lineup.raw`'s `positions[]`, which is exactly what this service
-        already reads.
+        Lineups are the only source of numeric position ids: the event feed is
+        flattened before storage and keeps the position name alone.
         """
         resolver = EntityResolver(self.session)
         rows = self.session.execute(
@@ -155,20 +144,16 @@ class LineupPositionBackfillService:
 
                 from_seconds = parse_clock(stint.get("from"))
                 if from_seconds is None:
-                    # Counted separately from an unknown position: a stint with
-                    # no start clock is a different data defect, and folding the
-                    # two together made the report claim a position vocabulary
-                    # gap that did not exist.
+                    # Counted separately from an unknown position so the report
+                    # names the actual defect.
                     report.skipped_unparsable_clock += 1
                     continue
 
                 to_seconds = parse_clock(stint.get("to"))
                 if to_seconds is None:
-                    # Verified as an exact correlation across all 15,276 stints:
-                    # a null `to` occurs if and only if end_reason is
-                    # "Final Whistle". Falling back to from_seconds rather than
-                    # a guessed 90 keeps a missing match end from inventing
-                    # minutes nobody played.
+                    # A null `to` means the player was still on at the final
+                    # whistle. Defaulting to `from_seconds` when the match end
+                    # is unknown credits no minutes rather than guessing.
                     to_seconds = match_end.get(lineup.match_id, from_seconds)
                     report.resolved_to_final_whistle += 1
 
