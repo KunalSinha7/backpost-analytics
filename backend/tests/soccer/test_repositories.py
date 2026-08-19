@@ -298,6 +298,27 @@ def test_event_list_by_match_filter_by_player(db: Session) -> None:
     assert events[0].id == ev.id
 
 
+def test_event_list_by_match_filter_by_unknown_name(db: Session) -> None:
+    """A name that resolves to no entity must match nothing, not everything.
+
+    Both name filters resolve through a lookup first (`team` via `team_alias`,
+    `player` via `player.name`) and then filter on the resulting ids. An empty
+    resolution has to stay an empty result set — the failure mode being guarded
+    is a filter that silently degrades to "no constraint" and returns the whole
+    match.
+    """
+    comp = create_competition(db, statsbomb_id=3005, season_id=3005)
+    match = create_match(db, comp.id, statsbomb_id=30005)
+    create_event(db, match.id, player="Alice")
+    create_event(db, match.id, player="Bob")
+
+    repo = EventRepository(db)
+    for kwargs in ({"team": "No Such Team FC"}, {"player": "No Such Player"}):
+        events, count, _ = repo.list_by_match(match.id, **kwargs)  # type: ignore[arg-type]
+        assert count == 0, f"{kwargs} should match nothing"
+        assert events == []
+
+
 def test_event_list_by_match_filter_by_possession(db: Session) -> None:
     comp = create_competition(db, statsbomb_id=3004, season_id=3004)
     match = create_match(db, comp.id, statsbomb_id=30004)

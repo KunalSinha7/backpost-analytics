@@ -1,6 +1,6 @@
 import logging
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 
 from sqlalchemy import text
 from sqlmodel import Session, func, select
@@ -11,8 +11,6 @@ from app.models.position import Position
 from app.services.resolver import EntityResolver, normalize_external_id
 
 logger = logging.getLogger(__name__)
-
-FINAL_WHISTLE = "Final Whistle"
 
 
 class EmptyBackfillInputError(RuntimeError):
@@ -47,16 +45,11 @@ class LineupPositionReport:
     lineups_processed: int = 0
     resolved_to_final_whistle: int = 0
     skipped_unknown_position: int = 0
+    skipped_unparsable_clock: int = 0
     notes: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, object]:
-        return {
-            "stints_created": self.stints_created,
-            "lineups_processed": self.lineups_processed,
-            "resolved_to_final_whistle": self.resolved_to_final_whistle,
-            "skipped_unknown_position": self.skipped_unknown_position,
-            "notes": self.notes,
-        }
+        return asdict(self)
 
 
 class LineupPositionBackfillService:
@@ -162,7 +155,11 @@ class LineupPositionBackfillService:
 
                 from_seconds = parse_clock(stint.get("from"))
                 if from_seconds is None:
-                    report.skipped_unknown_position += 1
+                    # Counted separately from an unknown position: a stint with
+                    # no start clock is a different data defect, and folding the
+                    # two together made the report claim a position vocabulary
+                    # gap that did not exist.
+                    report.skipped_unparsable_clock += 1
                     continue
 
                 to_seconds = parse_clock(stint.get("to"))

@@ -63,21 +63,14 @@ class EventRepository:
         if team_id is not None:
             both(Event.team_id == team_id)
         if team is not None:
-            resolved = self._team_ids_for_name(team)
-            both(
-                col(Event.team_id).in_(resolved)
-                if resolved
-                else col(Event.team_id).in_([])
-            )
+            # No empty-list special case: `in_([])` is what an unresolved name
+            # should produce, and it is also what `in_(resolved)` produces when
+            # `resolved` is empty. A name matching nothing filters to nothing.
+            both(col(Event.team_id).in_(self._team_ids_for_name(team)))
         if period is not None:
             both(Event.period == period)
         if player is not None:
-            resolved_players = self._player_ids_for_name(player)
-            both(
-                col(Event.player_id).in_(resolved_players)
-                if resolved_players
-                else col(Event.player_id).in_([])
-            )
+            both(col(Event.player_id).in_(self._player_ids_for_name(player)))
         if possession is not None:
             both(Event.possession == possession)
 

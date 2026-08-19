@@ -74,16 +74,19 @@ class MatchService:
                 # backfill is one-shot, so without this every newly ingested
                 # match arrives without team FKs — and those columns are now
                 # NOT NULL, so it would not arrive at all (§6/M1).
-                extra = match_row.model_dump()
+                # One dump, used for both the FK resolution below and the `raw`
+                # column: they must be the same payload, and calling
+                # model_dump() twice invited them to drift.
+                payload = match_row.model_dump()
                 home = self.resolver.resolve_team(
-                    extra.get("home_team_id"),
+                    payload.get("home_team_id"),
                     match_row.home_team,
                     authoritative_name=True,
                     gender=match_row.home_team_gender,
                     country_name=match_row.home_team_country_name,
                 )
                 away = self.resolver.resolve_team(
-                    extra.get("away_team_id"),
+                    payload.get("away_team_id"),
                     match_row.away_team,
                     authoritative_name=True,
                     gender=match_row.away_team_gender,
@@ -123,7 +126,7 @@ class MatchService:
                     # (home_team_id, away_team_id, referee_id, stadium_id,
                     # manager ids, competition_stage_id). Phase 1 resolves
                     # team FKs from these instead of re-fetching.
-                    raw=match_row.model_dump(),
+                    raw=payload,
                 )
                 self.repo.add(match)
                 existing.add(match_row.match_id)
