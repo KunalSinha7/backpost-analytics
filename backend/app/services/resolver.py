@@ -115,7 +115,6 @@ class EntityResolver:
         else:
             if authoritative_name and team.name != name:
                 team.name = name
-            # Fill gaps only — not every feed supplies these.
             if gender is not None and team.gender is None:
                 team.gender = gender
             if country_name is not None and team.country_name is None:

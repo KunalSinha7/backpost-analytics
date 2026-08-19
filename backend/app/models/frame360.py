@@ -14,7 +14,6 @@ class Frame360Base(SQLModel):
 class Frame360(Frame360Base, table=True):
     __tablename__ = "frame360"  # type: ignore[assignment]
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    # Unique because a frame describes exactly one event.
     event_id: uuid.UUID | None = Field(
         default=None, foreign_key="event.id", unique=True
     )

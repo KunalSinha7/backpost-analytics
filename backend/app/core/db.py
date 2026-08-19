@@ -3,11 +3,10 @@ from sqlmodel import Session, create_engine, select
 from app.core.config import settings
 from app.models import User, UserCreate
 
-# The unused imports below are load-bearing. Relationships between models are
-# declared with string forward references to avoid circular imports, and
-# SQLAlchemy can only resolve those names for classes that have been imported.
-# Importing every model here — the one module all entry points reach, for
-# `engine` — means standalone scripts get a fully configured mapper too, not
+# The unused imports below are load-bearing. Model relationships use string
+# forward references to avoid circular imports, and SQLAlchemy can only resolve
+# those names for classes that have been imported. Importing them here — the
+# one module every entry point reaches — keeps standalone scripts working, not
 # just the app, whose routes happen to import everything anyway.
 from app.models.competition import (  # noqa: F401
     Competition,

@@ -204,7 +204,7 @@ def test_backfill_is_idempotent(db: Session) -> None:
     assert len(db.exec(select(LineupPosition)).all()) == before
 
 
-# ── per-90, the phase gate ──────────────────────────────────────────────────
+# ── per-90 ──────────────────────────────────────────────────────────────────
 
 
 def test_per_90_matches_a_hand_computed_value(db: Session) -> None:

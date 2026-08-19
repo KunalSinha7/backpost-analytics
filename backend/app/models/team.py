@@ -7,9 +7,8 @@ from sqlmodel import Field, SQLModel
 class Team(SQLModel, table=True):
     """A club or national side, identified by the source's own id."""
 
-    # Declared here as well as in the migration so the model metadata matches
-    # the database. Otherwise `alembic revision --autogenerate` sees a
-    # constraint the models do not know about and emits a DROP for it.
+    # Mirrors the migration's constraint so autogenerate does not emit a DROP
+    # for a constraint the model metadata does not know about.
     __table_args__ = (
         UniqueConstraint("source_id", "external_id", name="uq_team_source_ext"),
     )

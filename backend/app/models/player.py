@@ -12,11 +12,8 @@ class PlayerBase(SQLModel):
 
 
 class Player(PlayerBase, table=True):
-    # Declared here as well as in the migration so the model metadata matches
-    # the database. Without it `alembic revision --autogenerate` sees a
-    # constraint the models do not know about and emits a DROP for it on every
-    # future migration — which only has to be accepted once to silently remove
-    # the guarantee.
+    # Mirrors the migration's constraint so autogenerate does not emit a DROP
+    # for a constraint the model metadata does not know about.
     __table_args__ = (
         UniqueConstraint("source_id", "external_id", name="uq_player_source_ext"),
     )

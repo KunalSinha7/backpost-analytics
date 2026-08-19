@@ -86,8 +86,6 @@ class LineupService:
                     )
                     if player is None:
                         continue
-                    # Fill gaps on the player rather than copying these onto
-                    # every appearance.
                     if player.nickname is None and player_row.player_nickname:
                         player.nickname = player_row.player_nickname
                     if player.nationality is None and player_row.country:

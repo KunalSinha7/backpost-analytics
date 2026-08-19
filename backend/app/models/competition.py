@@ -71,8 +71,6 @@ class CompetitionSeason(CompetitionSeasonBase, table=True):
 
 
 class CompetitionPublic(CompetitionSeasonBase):
-    # The competition's and season's own attributes are copied in from their
-    # tables by `from_row` rather than stored on this row.
     id: uuid.UUID
     country_name: str = Field(max_length=100)
     competition_name: str = Field(max_length=255)

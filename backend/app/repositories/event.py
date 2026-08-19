@@ -59,9 +59,7 @@ class EventRepository:
         if team_id is not None:
             both(Event.team_id == team_id)
         if team is not None:
-            # No empty-list special case: `in_([])` is what an unresolved name
-            # should produce, and it is also what `in_(resolved)` produces when
-            # `resolved` is empty. A name matching nothing filters to nothing.
+            # An unresolvable name yields `in_([])`, which matches nothing.
             both(col(Event.team_id).in_(self._team_ids_for_name(team)))
         if period is not None:
             both(Event.period == period)
