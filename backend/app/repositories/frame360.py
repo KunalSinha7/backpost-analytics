@@ -16,6 +16,20 @@ class Frame360Repository:
             ).all()
         )
 
+    def event_ids_by_statsbomb_id(self, match_id: uuid.UUID) -> dict[str, uuid.UUID]:
+        """Map this match's event statsbomb ids to their primary keys.
+
+        Lets frame ingest fill `frame360.event_id` as it goes. Events are
+        ingested before frames, so the rows are already there.
+        """
+        from app.models.event import Event
+
+        return dict(
+            self.session.exec(
+                select(Event.statsbomb_id, Event.id).where(Event.match_id == match_id)
+            ).all()
+        )
+
     def list_by_match(
         self, match_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> tuple[list[Frame360], int]:

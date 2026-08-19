@@ -41,19 +41,40 @@ class Frame360Service:
                 continue
 
             try:
-                frames_df = sb.frames(match_id=match.statsbomb_id)
+                # fmt="dict", not the default DataFrame. statsbombpy 1.19.0's
+                # frame flattening raises under pandas 3.x —
+                #   InvalidIndexError: Reindexing only valid with uniquely
+                #   valued Index objects
+                # — for every match, so the DataFrame path ingested exactly
+                # zero frames while reporting success. The dict path returns
+                # the same payload and is unaffected.
+                frames = sb.frames(match_id=match.statsbomb_id, fmt="dict")
             except Exception:
-                logger.debug("No 360 frames available for match %s", match.statsbomb_id)
+                # Warning, not debug: this is a fetch failure, and at debug it
+                # was invisible — which is how the pandas breakage above went
+                # unnoticed behind a cheerful "0 frames" result.
+                logger.warning(
+                    "Could not fetch 360 frames for match %s", match.statsbomb_id
+                )
                 continue
 
+            event_ids = self.frame_repo.event_ids_by_statsbomb_id(match.id)
+
             batch: list[Frame360] = []
-            for _, row in frames_df.iterrows():  # type: ignore
-                frame_row = StatsBombFrameRow.model_validate(row.to_dict())
-                if frame_row.id in existing:
+            for entry in frames:
+                # The dict payload names it `event_uuid`; the DataFrame path
+                # called the same field `id`.
+                frame_row = StatsBombFrameRow.model_validate(
+                    {**entry, "id": entry.get("event_uuid", "")}
+                )
+                if not frame_row.id or frame_row.id in existing:
                     continue
                 frame = Frame360(
                     match_id=match.id,
                     event_statsbomb_id=frame_row.id,
+                    # Resolved here rather than left to a backfill: events are
+                    # ingested before frames, so the event already exists.
+                    event_id=event_ids.get(frame_row.id),
                     visible_area=frame_row.visible_area or [],
                     freeze_frame=frame_row.freeze_frame or [],
                 )

@@ -2,17 +2,42 @@ from sqlmodel import Session, create_engine, select
 
 from app.core.config import settings
 from app.models import User, UserCreate
+
+# Every table model is imported here, not just the ones this module uses, and
+# the unused ones are load-bearing.
+#
+# `CompetitionSeason.matches` targets "SoccerMatch" as a string forward
+# reference — it has to, since `app.models.match` imports `CompetitionSeason`
+# and a direct import would be circular. SQLAlchemy resolves that name when it
+# configures mappers, which fails outright if the class was never imported:
+#
+#   InvalidRequestError: When initializing mapper Mapper[CompetitionSeason],
+#   expression 'SoccerMatch' failed to locate a name ('SoccerMatch')
+#
+# The FastAPI app never hits this because its routes import everything
+# transitively. Standalone scripts do: `python -m app.backfill_lineup_positions`
+# crashed on a freshly built database for precisely this reason, and only
+# there. Importing them at the one choke point every entry point already goes
+# through — this module, for `engine` — fixes all of them at once.
+from app.models.competition import (  # noqa: F401
+    Competition,
+    CompetitionSeason,
+    Season,
+)
 from app.models.data_source import DataSource
+from app.models.event import Event  # noqa: F401
+from app.models.frame360 import Frame360  # noqa: F401
+from app.models.lineup import Lineup  # noqa: F401
+from app.models.lineup_position import LineupPosition  # noqa: F401
+from app.models.match import SoccerMatch  # noqa: F401
+from app.models.player import Player  # noqa: F401
+from app.models.position import Position  # noqa: F401
+from app.models.team import Team, TeamAlias  # noqa: F401
 from app.repositories.user import create_user
 
 engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
 
 STATSBOMB_SOURCE_KEY = "statsbomb"
-
-
-# make sure all SQLModel models are imported (app.models) before initializing DB
-# otherwise, SQLModel might fail to initialize relationships properly
-# for more details: https://github.com/fastapi/full-stack-fastapi-template/issues/28
 
 
 def init_db(session: Session) -> None:

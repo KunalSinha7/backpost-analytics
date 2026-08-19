@@ -290,3 +290,89 @@ def test_unused_substitute_is_not_an_appearance(db: Session) -> None:
     assert stats is not None
     assert stats.appearances == 0
     assert stats.minutes_played == 0.0
+
+
+def test_overlapping_stints_do_not_double_count(db: Session) -> None:
+    """Minutes are the union of on-pitch intervals, not the sum of stints.
+
+    StatsBomb's lineup feed emits overlapping stints on some knockout matches,
+    where the clock appears to restart mid-game. Messi's 2022 final reads
+    00:00->115:32, then 115:32->28:11 (backward), then 28:19->Final Whistle.
+    Summed that is 213 minutes of a 126-minute match; merged it is the full
+    match, which is correct.
+
+    The fixture reproduces the shape: a stint covering the whole match, then a
+    second one wholly inside it. Summing gives 150; the union gives 92.5.
+    """
+    stints = [
+        {
+            "from": "00:00",
+            "to": None,
+            "from_period": 1,
+            "to_period": 2,
+            "position_id": 23,
+            "position": "Center Forward",
+            "start_reason": "Starting XI",
+            "end_reason": "Final Whistle",
+        },
+        {
+            # Entirely contained in the stint above — contributes no new time.
+            "from": "10:00",
+            "to": "70:00",
+            "from_period": 1,
+            "to_period": 2,
+            "position_id": 23,
+            "position": "Center Forward",
+            "start_reason": "Tactical Shift",
+            "end_reason": "Tactical Shift",
+        },
+    ]
+    player_id, season_id = _season_fixture(db, base=93009, stints=stints, pass_events=2)
+
+    stats = PlayerService(db).get_season_stats(player_id, season_id)
+    assert stats is not None
+    # 92:30 final whistle, not 92.5 + 60 = 152.5.
+    assert stats.minutes_played == 92.5
+    assert stats.appearances == 1
+
+
+def test_minutes_never_exceed_the_match_length(db: Session) -> None:
+    """The invariant the overlap bug violated: you cannot play longer than the match."""
+    stints = [
+        {
+            "from": "00:00",
+            "to": "80:00",
+            "from_period": 1,
+            "to_period": 2,
+            "position_id": 23,
+            "position": "Center Forward",
+            "start_reason": "Starting XI",
+            "end_reason": "Tactical Shift",
+        },
+        {
+            # Backward clock, as the real feed produces.
+            "from": "80:00",
+            "to": "20:00",
+            "from_period": 2,
+            "to_period": 1,
+            "position_id": 23,
+            "position": "Center Forward",
+            "start_reason": "Tactical Shift",
+            "end_reason": "Player Off",
+        },
+        {
+            "from": "20:10",
+            "to": None,
+            "from_period": 1,
+            "to_period": 2,
+            "position_id": 23,
+            "position": "Center Forward",
+            "start_reason": "Player On",
+            "end_reason": "Final Whistle",
+        },
+    ]
+    player_id, season_id = _season_fixture(db, base=93010, stints=stints, pass_events=1)
+
+    stats = PlayerService(db).get_season_stats(player_id, season_id)
+    assert stats is not None
+    assert stats.minutes_played <= MATCH_END_SECONDS / 60.0

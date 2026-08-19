@@ -1,12 +1,11 @@
 import uuid
 
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlmodel import Session, col, select
 
 from app.models.competition import CompetitionSeason
 from app.models.event import Event
 from app.models.lineup import Lineup
-from app.models.lineup_position import LineupPosition
 from app.models.match import SoccerMatch
 from app.models.player import Player
 
@@ -55,35 +54,76 @@ class PlayerRepository:
     ) -> tuple[int, float]:
         """Matches played and minutes on the pitch, optionally scoped to a season.
 
-        Appearances counts matches where the player actually took the field —
-        a named substitute who never came on has no stint, so they do not count.
-        Minutes come from `lineup_position`, which is the whole reason Phase 3
-        exists: before it, that number lived inside a JSON array and could not
-        be aggregated at all.
+        Appearances counts matches where the player actually took the field — a
+        named substitute who never came on has no stint, so they do not count.
+
+        **Minutes are the union of on-pitch intervals, not the sum of stint
+        durations.** Summing looks equivalent and is not: StatsBomb's lineup
+        feed emits overlapping stints on some knockout matches, where the clock
+        appears to restart mid-game. Messi's 2022 final reads:
+
+            stint 1  from 00:00  (period 1) -> to 115:32 (period 4)
+            stint 2  from 115:32 (period 4) -> to  28:11 (period 1)   <- backward
+            stint 3  from 28:19  (period 1) -> to null, "Final Whistle"
+
+        Summed, that is 213 minutes of a 126-minute match. Merging the
+        intervals gives 125.97 — he played all of it, which is correct.
+
+        Measured on the 2022 World Cup: 42 of 1,995 lineups contain a backward
+        clock and 17 exceeded their own match length, the worst by 87 minutes.
+        None of it showed up in the Ligue 1 data Phase 3 was validated against,
+        because that season has no extra time — every match ended under 99
+        minutes, so no stint could overlap far enough to notice.
         """
-        stmt = (
-            select(
-                func.count(func.distinct(col(Lineup.match_id))),
-                func.coalesce(
-                    func.sum(
-                        col(LineupPosition.to_seconds)
-                        - col(LineupPosition.from_seconds)
-                    ),
-                    0,
-                ),
+        sql = """
+            WITH match_end AS (
+                SELECT match_id, max(minute * 60 + second) AS end_s
+                FROM event GROUP BY match_id
+            ),
+            stints AS (
+                SELECT l.id AS lineup_id, l.match_id,
+                       greatest(lp.from_seconds, 0) AS a,
+                       least(lp.to_seconds, coalesce(me.end_s, lp.to_seconds)) AS b
+                FROM lineup l
+                JOIN lineup_position lp ON lp.lineup_id = l.id
+                JOIN soccer_match m ON m.id = l.match_id
+                JOIN competition_season cs ON cs.id = m.competition_season_id
+                LEFT JOIN match_end me ON me.match_id = l.match_id
+                WHERE l.player_id = :player_id
+                  -- CAST(), not ::uuid — a `::` immediately after a bind
+                  -- parameter stops SQLAlchemy recognising it as one.
+                  AND (CAST(:season_id AS uuid) IS NULL
+                       OR cs.season_ref_id = CAST(:season_id AS uuid))
+            ),
+            bounded AS (
+                SELECT lineup_id, match_id, a, greatest(b, a) AS b FROM stints
+            ),
+            marked AS (
+                SELECT *,
+                       CASE WHEN a > coalesce(
+                                max(b) OVER (PARTITION BY lineup_id ORDER BY a, b
+                                             ROWS BETWEEN UNBOUNDED PRECEDING
+                                                      AND 1 PRECEDING), -1)
+                            THEN 1 ELSE 0 END AS is_new
+                FROM bounded
+            ),
+            grouped AS (
+                SELECT *, sum(is_new) OVER (PARTITION BY lineup_id ORDER BY a, b
+                                            ROWS BETWEEN UNBOUNDED PRECEDING
+                                                     AND CURRENT ROW) AS grp
+                FROM marked
+            ),
+            merged AS (
+                SELECT lineup_id, match_id, min(a) AS a, max(b) AS b
+                FROM grouped GROUP BY lineup_id, match_id, grp
             )
-            .select_from(Lineup)
-            .join(LineupPosition, col(LineupPosition.lineup_id) == col(Lineup.id))
-            .join(SoccerMatch, col(SoccerMatch.id) == col(Lineup.match_id))
-            .join(
-                CompetitionSeason,
-                col(CompetitionSeason.id) == col(SoccerMatch.competition_season_id),
-            )
-            .where(col(Lineup.player_id) == player_id)
-        )
-        if season_id is not None:
-            stmt = stmt.where(col(CompetitionSeason.season_ref_id) == season_id)
-        appearances, seconds = self.session.exec(stmt).one()
+            SELECT count(DISTINCT match_id) AS appearances,
+                   coalesce(sum(b - a), 0) AS seconds
+            FROM merged
+        """
+        appearances, seconds = self.session.execute(
+            text(sql), {"player_id": player_id, "season_id": season_id}
+        ).one()
         return int(appearances or 0), round(float(seconds or 0) / 60.0, 2)
 
     def season_event_counts(

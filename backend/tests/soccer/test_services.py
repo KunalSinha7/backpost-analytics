@@ -127,10 +127,21 @@ def _lineups_dict() -> dict:
     }
 
 
-def _frames_df(event_id: str) -> pd.DataFrame:
-    return pd.DataFrame(
-        [{"id": event_id, "visible_area": [0, 80, 120, 80], "freeze_frame": []}]
-    )
+def _frames_payload(event_id: str) -> list[dict]:
+    """What `sb.frames(fmt="dict")` returns.
+
+    The service asks for the dict format because statsbombpy 1.19.0's DataFrame
+    path raises under pandas 3.x for every match. Note the field is
+    `event_uuid` here, where the DataFrame path called it `id`.
+    """
+    return [
+        {
+            "event_uuid": event_id,
+            "match_id": 1,
+            "visible_area": [0, 80, 120, 80],
+            "freeze_frame": [],
+        }
+    ]
 
 
 # ── CompetitionService ─────────────────────────────────────────────────────
@@ -410,7 +421,9 @@ def test_lineup_service_ingest_skips_fetch_error(db: Session) -> None:
 def test_frame360_service_ingest(db: Session) -> None:
     comp = create_competition(db, statsbomb_id=6012, season_id=6012)
     create_match(db, comp.id, statsbomb_id=60009, match_status_360="available")
-    with patch("statsbombpy.sb.frames", return_value=_frames_df("evt-frame-6012-001")):
+    with patch(
+        "statsbombpy.sb.frames", return_value=_frames_payload("evt-frame-6012-001")
+    ):
         n = Frame360Service(db).ingest_for_competition(6012, 6012)
     assert n == 1
 
@@ -418,9 +431,13 @@ def test_frame360_service_ingest(db: Session) -> None:
 def test_frame360_service_ingest_idempotent(db: Session) -> None:
     comp = create_competition(db, statsbomb_id=6013, season_id=6013)
     create_match(db, comp.id, statsbomb_id=60010, match_status_360="available")
-    with patch("statsbombpy.sb.frames", return_value=_frames_df("evt-frame-6013-001")):
+    with patch(
+        "statsbombpy.sb.frames", return_value=_frames_payload("evt-frame-6013-001")
+    ):
         n1 = Frame360Service(db).ingest_for_competition(6013, 6013)
-    with patch("statsbombpy.sb.frames", return_value=_frames_df("evt-frame-6013-001")):
+    with patch(
+        "statsbombpy.sb.frames", return_value=_frames_payload("evt-frame-6013-001")
+    ):
         n2 = Frame360Service(db).ingest_for_competition(6013, 6013)
     assert n1 == 1
     assert n2 == 0
