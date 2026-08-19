@@ -27,9 +27,14 @@ class PlayerRepository:
 
         stmt = (
             select(Player, func.count(col(Lineup.id)).label("match_count"))
+            # Joined on the FK, not on `statsbomb_player_id == statsbomb_id`.
+            # That soft integer join is precisely the "player identity split
+            # three ways with no FK" §1.3 set out to remove; Phase 1 created the
+            # FK and this query was the last caller still ignoring it. Verified
+            # equivalent on the current data: 829 players, 0 disagreements.
             .outerjoin(
                 Lineup,
-                col(Lineup.statsbomb_player_id) == col(Player.statsbomb_id),
+                col(Lineup.player_id) == col(Player.id),
             )
             .group_by(col(Player.id))
             .order_by(col(Player.name))
