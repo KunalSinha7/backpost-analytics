@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, ReadCompetitionsData, ReadCompetitionsResponse, IngestSoccerDataResponse, GetAvailableCompetitionsResponse, ReadMatchesData, ReadMatchesResponse, ReadMatchTeamsData, ReadMatchTeamsResponse, ReadEventsData, ReadEventsResponse, IngestEventsData, IngestEventsResponse, ReadLineupsData, ReadLineupsResponse, ReadFramesData, ReadFramesResponse, ReadPlayersData, ReadPlayersResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+import type { LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, ReadCompetitionsData, ReadCompetitionsResponse, IngestSoccerDataResponse, GetAvailableCompetitionsResponse, ReadMatchesData, ReadMatchesResponse, ReadMatchTeamsData, ReadMatchTeamsResponse, ReadEventsData, ReadEventsResponse, IngestEventsData, IngestEventsResponse, ReadLineupsData, ReadLineupsResponse, ReadFramesData, ReadFramesResponse, ReadPlayersData, ReadPlayersResponse, ReadPlayerSeasonStatsData, ReadPlayerSeasonStatsResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
 
 export class LoginService {
     /**
@@ -175,9 +175,10 @@ export class SoccerService {
      * @param data The data for the request.
      * @param data.skip
      * @param data.limit
-     * @param data.competitionId
+     * @param data.competitionSeasonId
      * @param data.hasEvents
      * @param data.teamName
+     * @param data.teamId
      * @returns SoccerMatchesPublic Successful Response
      * @throws ApiError
      */
@@ -188,9 +189,10 @@ export class SoccerService {
             query: {
                 skip: data.skip,
                 limit: data.limit,
-                competition_id: data.competitionId,
+                competition_season_id: data.competitionSeasonId,
                 has_events: data.hasEvents,
-                team_name: data.teamName
+                team_name: data.teamName,
+                team_id: data.teamId
             },
             errors: {
                 422: 'Validation Error'
@@ -201,7 +203,7 @@ export class SoccerService {
     /**
      * Read Match Teams
      * @param data The data for the request.
-     * @param data.competitionId
+     * @param data.competitionSeasonId
      * @param data.hasEvents
      * @returns SoccerTeamsPublic Successful Response
      * @throws ApiError
@@ -211,7 +213,7 @@ export class SoccerService {
             method: 'GET',
             url: '/api/v1/soccer/matches/teams',
             query: {
-                competition_id: data.competitionId,
+                competition_season_id: data.competitionSeasonId,
                 has_events: data.hasEvents
             },
             errors: {
@@ -231,6 +233,7 @@ export class SoccerService {
      * @param data.period
      * @param data.player
      * @param data.possession
+     * @param data.teamId
      * @returns EventsPublic Successful Response
      * @throws ApiError
      */
@@ -246,7 +249,8 @@ export class SoccerService {
                 team: data.team,
                 period: data.period,
                 player: data.player,
-                possession: data.possession
+                possession: data.possession,
+                team_id: data.teamId
             },
             errors: {
                 422: 'Validation Error'
@@ -337,6 +341,34 @@ export class SoccerService {
                 skip: data.skip,
                 limit: data.limit,
                 name_search: data.nameSearch
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Read Player Season Stats
+     * Season stats for one player, with per-90 rates.
+     *
+     * `season_id` is the `season` table's uuid, not StatsBomb's integer season
+     * id. Omit it for career totals across everything ingested.
+     * @param data The data for the request.
+     * @param data.playerId
+     * @param data.seasonId
+     * @returns PlayerSeasonStats Successful Response
+     * @throws ApiError
+     */
+    public static readPlayerSeasonStats(data: ReadPlayerSeasonStatsData): CancelablePromise<ReadPlayerSeasonStatsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/soccer/players/{player_id}/stats',
+            path: {
+                player_id: data.playerId
+            },
+            query: {
+                season_id: data.seasonId
             },
             errors: {
                 422: 'Validation Error'

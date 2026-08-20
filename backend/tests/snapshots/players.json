@@ -1,0 +1,37 @@
+{
+  "count": 4,
+  "data": [
+    {
+      "id": "<uuid:1>",
+      "match_count": 2,
+      "name": "Snapshot Alpha",
+      "nationality": "Snapshotland",
+      "nickname": "Alpha",
+      "statsbomb_id": 95001
+    },
+    {
+      "id": "<uuid:2>",
+      "match_count": 1,
+      "name": "Snapshot Bravo",
+      "nationality": null,
+      "nickname": null,
+      "statsbomb_id": 95002
+    },
+    {
+      "id": "<uuid:3>",
+      "match_count": 0,
+      "name": "Snapshot Charlie",
+      "nationality": null,
+      "nickname": null,
+      "statsbomb_id": 95003
+    },
+    {
+      "id": "<uuid:4>",
+      "match_count": 1,
+      "name": "Unregistered Player",
+      "nationality": null,
+      "nickname": null,
+      "statsbomb_id": 96001
+    }
+  ]
+}

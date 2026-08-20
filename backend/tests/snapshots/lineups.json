@@ -1,0 +1,38 @@
+{
+  "count": 3,
+  "data": [
+    {
+      "country_name": "Snapshotland",
+      "id": "<uuid:1>",
+      "jersey_number": 1,
+      "match_id": "<uuid:2>",
+      "player_name": "Snapshot Alpha",
+      "player_nickname": "Alpha",
+      "started": true,
+      "statsbomb_player_id": 95001,
+      "team_name": "Snapshot Rovers"
+    },
+    {
+      "country_name": null,
+      "id": "<uuid:3>",
+      "jersey_number": 10,
+      "match_id": "<uuid:2>",
+      "player_name": "Snapshot Bravo",
+      "player_nickname": null,
+      "started": true,
+      "statsbomb_player_id": 95002,
+      "team_name": "Snapshot Rovers"
+    },
+    {
+      "country_name": null,
+      "id": "<uuid:4>",
+      "jersey_number": 7,
+      "match_id": "<uuid:2>",
+      "player_name": "Unregistered Player",
+      "player_nickname": null,
+      "started": false,
+      "statsbomb_player_id": 96001,
+      "team_name": "Snapshot United"
+    }
+  ]
+}

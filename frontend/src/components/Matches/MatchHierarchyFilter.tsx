@@ -12,7 +12,7 @@ import {
 const ALL = "all"
 
 export interface MatchHierarchySelection {
-  competitionId: string | undefined
+  competitionSeasonId: string | undefined
   teamName: string | undefined
   matchId: string | undefined
 }
@@ -25,7 +25,7 @@ interface MatchHierarchyFilterProps extends MatchHierarchySelection {
 }
 
 export function MatchHierarchyFilter({
-  competitionId,
+  competitionSeasonId,
   teamName,
   matchId,
   onChange,
@@ -41,20 +41,20 @@ export function MatchHierarchyFilter({
   })
 
   const { data: teamsData, isFetching: isFetchingTeams } = useQuery({
-    queryKey: ["match-teams", competitionId],
+    queryKey: ["match-teams", competitionSeasonId],
     queryFn: () =>
-      SoccerService.readMatchTeams({ competitionId, hasEvents: true }),
+      SoccerService.readMatchTeams({ competitionSeasonId, hasEvents: true }),
     placeholderData: keepPreviousData,
   })
 
   const { data: matchesData, isFetching: isFetchingMatches } = useQuery({
-    queryKey: ["matches", "with-events", competitionId, teamName],
+    queryKey: ["matches", "with-events", competitionSeasonId, teamName],
     queryFn: () =>
       SoccerService.readMatches({
         skip: 0,
         limit: 500,
         hasEvents: true,
-        competitionId,
+        competitionSeasonId,
         teamName,
       }),
     placeholderData: keepPreviousData,
@@ -68,7 +68,7 @@ export function MatchHierarchyFilter({
 
   const handleCompetitionChange = (value: string) => {
     onChange({
-      competitionId: value === ALL ? undefined : value,
+      competitionSeasonId: value === ALL ? undefined : value,
       teamName: undefined,
       matchId: undefined,
     })
@@ -76,20 +76,20 @@ export function MatchHierarchyFilter({
 
   const handleTeamChange = (value: string) => {
     onChange({
-      competitionId,
+      competitionSeasonId,
       teamName: value === ALL ? undefined : value,
       matchId: undefined,
     })
   }
 
   const handleMatchChange = (value: string) => {
-    onChange({ competitionId, teamName, matchId: value })
+    onChange({ competitionSeasonId, teamName, matchId: value })
   }
 
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Select
-        value={competitionId ?? ALL}
+        value={competitionSeasonId ?? ALL}
         onValueChange={handleCompetitionChange}
       >
         <SelectTrigger className="w-64">

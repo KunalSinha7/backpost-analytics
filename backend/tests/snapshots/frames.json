@@ -1,0 +1,17 @@
+{
+  "count": 1,
+  "data": [
+    {
+      "event_statsbomb_id": "<uuid:1>",
+      "freeze_frame": [],
+      "id": "<uuid:2>",
+      "match_id": "<uuid:3>",
+      "visible_area": [
+        0.0,
+        80.0,
+        120.0,
+        80.0
+      ]
+    }
+  ]
+}

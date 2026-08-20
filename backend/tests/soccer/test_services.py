@@ -6,6 +6,8 @@ from sqlmodel import Session, select
 
 from app.exceptions.event import StatsBombFetchError
 from app.models.event import Event
+from app.models.match import SoccerMatch
+from app.models.player import Player
 from app.services.competition import CompetitionService
 from app.services.event import EventService
 from app.services.frame360 import Frame360Service
@@ -44,6 +46,8 @@ def _matches_df(match_id: int) -> pd.DataFrame:
                 "kick_off": "15:00:00.000",
                 "home_team": "Team A",
                 "away_team": "Team B",
+                "home_team_id": 147,
+                "away_team_id": 200,
                 "home_score": 2,
                 "away_score": 1,
                 "stadium": None,
@@ -81,6 +85,8 @@ def _events_df(event_id: str) -> pd.DataFrame:
                 "possession_team": {"name": "Team A"},
                 "play_pattern": {"name": "Regular Play"},
                 "team": {"name": "Team A"},
+                "team_id": 147,
+                "possession_team_id": 147,
                 "player": None,
                 "location": [60.0, 40.0],
                 "duration": 0.0,
@@ -121,10 +127,21 @@ def _lineups_dict() -> dict:
     }
 
 
-def _frames_df(event_id: str) -> pd.DataFrame:
-    return pd.DataFrame(
-        [{"id": event_id, "visible_area": [0, 80, 120, 80], "freeze_frame": []}]
-    )
+def _frames_payload(event_id: str) -> list[dict]:
+    """What `sb.frames(fmt="dict")` returns.
+
+    The service asks for the dict format because statsbombpy 1.19.0's DataFrame
+    path raises under pandas 3.x for every match. Note the field is
+    `event_uuid` here, where the DataFrame path called it `id`.
+    """
+    return [
+        {
+            "event_uuid": event_id,
+            "match_id": 1,
+            "visible_area": [0, 80, 120, 80],
+            "freeze_frame": [],
+        }
+    ]
 
 
 # ── CompetitionService ─────────────────────────────────────────────────────
@@ -178,6 +195,83 @@ def test_match_service_ingest_idempotent(db: Session) -> None:
         n2 = MatchService(db).ingest([comp])
     assert n1 >= 1
     assert n2 == 0
+
+
+# IDs 6019-6021 / matches 60016-60018 reserved for raw backfill tests
+
+
+def _matches_df_with_ids(match_id: int) -> pd.DataFrame:
+    """A match row carrying the *_id columns the typed fields drop.
+
+    StatsBombMatchRow declares none of these; they survive only because
+    _StatsBombRow sets extra="allow", and team FKs are resolved from them.
+    """
+    df = _matches_df(match_id)
+    df["home_team_id"] = 147
+    df["away_team_id"] = 200
+    df["competition_stage_id"] = 10
+    return df
+
+
+def _strip_raw(db: Session, statsbomb_id: int) -> SoccerMatch:
+    """Return a match to its pre-`raw`-column state."""
+    match = db.exec(
+        select(SoccerMatch).where(SoccerMatch.statsbomb_id == statsbomb_id)
+    ).one()
+    match.raw = None
+    db.add(match)
+    db.commit()
+    return match
+
+
+def test_match_service_backfill_raw_populates_existing_rows(db: Session) -> None:
+    comp = create_competition(db, statsbomb_id=6019, season_id=6019)
+    with patch("statsbombpy.sb.matches", return_value=_matches_df_with_ids(60016)):
+        MatchService(db).ingest([comp])
+    db.commit()
+    match = _strip_raw(db, 60016)
+    assert match.raw is None
+
+    with patch("statsbombpy.sb.matches", return_value=_matches_df_with_ids(60016)):
+        updated = MatchService(db).backfill_raw([comp])
+
+    assert updated == 1
+    db.refresh(match)
+    # The point of the backfill: ids the typed columns never stored.
+    assert match.raw is not None
+    assert match.raw["home_team_id"] == 147
+    assert match.raw["away_team_id"] == 200
+    assert match.raw["competition_stage_id"] == 10
+
+
+def test_match_service_backfill_raw_is_idempotent(db: Session) -> None:
+    comp = create_competition(db, statsbomb_id=6020, season_id=6020)
+    with patch("statsbombpy.sb.matches", return_value=_matches_df_with_ids(60017)):
+        MatchService(db).ingest([comp])
+    db.commit()
+    _strip_raw(db, 60017)
+
+    with patch("statsbombpy.sb.matches", return_value=_matches_df_with_ids(60017)):
+        first = MatchService(db).backfill_raw([comp])
+    # A second pass must not even re-fetch, so a partial run is safe to repeat.
+    with patch("statsbombpy.sb.matches", side_effect=AssertionError("re-fetched")):
+        second = MatchService(db).backfill_raw([comp])
+
+    assert first == 1
+    assert second == 0
+
+
+def test_match_service_backfill_raw_survives_fetch_error(db: Session) -> None:
+    comp = create_competition(db, statsbomb_id=6021, season_id=6021)
+    with patch("statsbombpy.sb.matches", return_value=_matches_df_with_ids(60018)):
+        MatchService(db).ingest([comp])
+    db.commit()
+    _strip_raw(db, 60018)
+
+    with patch("statsbombpy.sb.matches", side_effect=Exception("network error")):
+        updated = MatchService(db).backfill_raw([comp])
+
+    assert updated == 0
 
 
 # ── EventService ───────────────────────────────────────────────────────────
@@ -265,11 +359,15 @@ def test_event_service_ingest_populates_pass_recipient(db: Session) -> None:
     events_df = _events_df("evt-svc-6017-001")
     events_df.at[0, "type"] = {"name": "Pass"}
     events_df["pass_recipient"] = ["Alice"]
+    events_df["pass_recipient_id"] = [777001]
     with patch("statsbombpy.sb.events", return_value=events_df):
         EventService(db).ingest_for_competition(6017, 6017)
 
     ev = _get_event(db, "evt-svc-6017-001")
-    assert ev.pass_recipient == "Alice"
+    assert ev.pass_recipient_id is not None
+    recipient = db.get(Player, ev.pass_recipient_id)
+    assert recipient is not None
+    assert recipient.name == "Alice"
 
 
 def test_event_service_ingest_no_pass_recipient_for_other_types(db: Session) -> None:
@@ -280,7 +378,7 @@ def test_event_service_ingest_no_pass_recipient_for_other_types(db: Session) -> 
         EventService(db).ingest_for_competition(6018, 6018)
 
     ev = _get_event(db, "evt-svc-6018-001")
-    assert ev.pass_recipient is None
+    assert ev.pass_recipient_id is None
 
 
 # ── LineupService ──────────────────────────────────────────────────────────
@@ -290,7 +388,7 @@ def test_event_service_ingest_no_pass_recipient_for_other_types(db: Session) -> 
 
 def test_lineup_service_ingest(db: Session) -> None:
     comp = create_competition(db, statsbomb_id=6009, season_id=6009)
-    create_match(db, comp.id, statsbomb_id=60006)
+    create_match(db, comp.id, statsbomb_id=60006, home_team="Team A")
     with patch("statsbombpy.sb.lineups", return_value=_lineups_dict()):
         n = LineupService(db).ingest_for_competition(6009, 6009)
     assert n == 1
@@ -298,7 +396,7 @@ def test_lineup_service_ingest(db: Session) -> None:
 
 def test_lineup_service_ingest_idempotent(db: Session) -> None:
     comp = create_competition(db, statsbomb_id=6010, season_id=6010)
-    create_match(db, comp.id, statsbomb_id=60007)
+    create_match(db, comp.id, statsbomb_id=60007, home_team="Team A")
     with patch("statsbombpy.sb.lineups", return_value=_lineups_dict()):
         n1 = LineupService(db).ingest_for_competition(6010, 6010)
     with patch("statsbombpy.sb.lineups", return_value=_lineups_dict()):
@@ -309,7 +407,7 @@ def test_lineup_service_ingest_idempotent(db: Session) -> None:
 
 def test_lineup_service_ingest_skips_fetch_error(db: Session) -> None:
     comp = create_competition(db, statsbomb_id=6011, season_id=6011)
-    create_match(db, comp.id, statsbomb_id=60008)
+    create_match(db, comp.id, statsbomb_id=60008, home_team="Team A")
     with patch("statsbombpy.sb.lineups", side_effect=Exception("fetch error")):
         n = LineupService(db).ingest_for_competition(6011, 6011)
     assert n == 0
@@ -323,7 +421,9 @@ def test_lineup_service_ingest_skips_fetch_error(db: Session) -> None:
 def test_frame360_service_ingest(db: Session) -> None:
     comp = create_competition(db, statsbomb_id=6012, season_id=6012)
     create_match(db, comp.id, statsbomb_id=60009, match_status_360="available")
-    with patch("statsbombpy.sb.frames", return_value=_frames_df("evt-frame-6012-001")):
+    with patch(
+        "statsbombpy.sb.frames", return_value=_frames_payload("evt-frame-6012-001")
+    ):
         n = Frame360Service(db).ingest_for_competition(6012, 6012)
     assert n == 1
 
@@ -331,9 +431,13 @@ def test_frame360_service_ingest(db: Session) -> None:
 def test_frame360_service_ingest_idempotent(db: Session) -> None:
     comp = create_competition(db, statsbomb_id=6013, season_id=6013)
     create_match(db, comp.id, statsbomb_id=60010, match_status_360="available")
-    with patch("statsbombpy.sb.frames", return_value=_frames_df("evt-frame-6013-001")):
+    with patch(
+        "statsbombpy.sb.frames", return_value=_frames_payload("evt-frame-6013-001")
+    ):
         n1 = Frame360Service(db).ingest_for_competition(6013, 6013)
-    with patch("statsbombpy.sb.frames", return_value=_frames_df("evt-frame-6013-001")):
+    with patch(
+        "statsbombpy.sb.frames", return_value=_frames_payload("evt-frame-6013-001")
+    ):
         n2 = Frame360Service(db).ingest_for_competition(6013, 6013)
     assert n1 == 1
     assert n2 == 0

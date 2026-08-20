@@ -5,9 +5,9 @@ import PendingTable from "@/components/Pending/PendingTable"
 
 export const Route = createFileRoute("/_layout/soccer/matches")({
   validateSearch: (search: Record<string, unknown>) => ({
-    competitionId:
-      typeof search.competitionId === "string"
-        ? search.competitionId
+    competitionSeasonId:
+      typeof search.competitionSeasonId === "string"
+        ? search.competitionSeasonId
         : undefined,
   }),
   component: MatchesPage,
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_layout/soccer/matches")({
 })
 
 function MatchesPage() {
-  const { competitionId } = Route.useSearch()
+  const { competitionSeasonId } = Route.useSearch()
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -23,7 +23,7 @@ function MatchesPage() {
         <p className="text-muted-foreground">Browse matches by competition</p>
       </div>
       <Suspense fallback={<PendingTable />}>
-        <MatchTable initialCompetitionId={competitionId} />
+        <MatchTable initialCompetitionSeasonId={competitionSeasonId} />
       </Suspense>
     </div>
   )

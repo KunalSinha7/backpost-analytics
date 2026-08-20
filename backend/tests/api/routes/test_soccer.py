@@ -153,13 +153,13 @@ def test_read_matches_filter_by_competition(
     create_match(db, comp.id, statsbomb_id=80011)
     response = client.get(
         f"{BASE}/matches/",
-        params={"competition_id": str(comp.id)},
+        params={"competition_season_id": str(comp.id)},
         headers=superuser_token_headers,
     )
     assert response.status_code == 200
     body = response.json()
     assert body["count"] >= 1
-    assert all(m["competition_id"] == str(comp.id) for m in body["data"])
+    assert all(m["competition_season_id"] == str(comp.id) for m in body["data"])
 
 
 def test_read_match_teams(
@@ -171,7 +171,7 @@ def test_read_match_teams(
     )
     response = client.get(
         f"{BASE}/matches/teams",
-        params={"competition_id": str(comp.id)},
+        params={"competition_season_id": str(comp.id)},
         headers=superuser_token_headers,
     )
     assert response.status_code == 200
@@ -192,7 +192,7 @@ def test_read_match_teams_unscoped_excludes_other_competitions(
     )
     response = client.get(
         f"{BASE}/matches/teams",
-        params={"competition_id": str(comp_a.id)},
+        params={"competition_season_id": str(comp_a.id)},
         headers=superuser_token_headers,
     )
     assert response.status_code == 200

@@ -1,0 +1,37 @@
+{
+  "count": 2,
+  "data": [
+    {
+      "competition_gender": "male",
+      "competition_international": false,
+      "competition_name": "Snapshot Alpha League",
+      "competition_youth": false,
+      "country_name": "Snapshotland",
+      "id": "<uuid:1>",
+      "match_available": "2099-01-02T03:04:05.000000",
+      "match_available_360": "2099-01-02T03:04:05.000000",
+      "match_count": 2,
+      "match_updated": "2099-01-02T03:04:05.000000",
+      "match_updated_360": "2099-01-02T03:04:05.000000",
+      "season_id": 90001,
+      "season_name": "2098/2099",
+      "statsbomb_id": 90001
+    },
+    {
+      "competition_gender": "female",
+      "competition_international": true,
+      "competition_name": "Snapshot Beta Cup",
+      "competition_youth": false,
+      "country_name": "Snapshotland",
+      "id": "<uuid:2>",
+      "match_available": null,
+      "match_available_360": null,
+      "match_count": 0,
+      "match_updated": null,
+      "match_updated_360": null,
+      "season_id": 90002,
+      "season_name": "2099",
+      "statsbomb_id": 90002
+    }
+  ]
+}

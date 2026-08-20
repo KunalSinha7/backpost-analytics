@@ -7,9 +7,9 @@ import PendingTable from "@/components/Pending/PendingTable"
 
 export const Route = createFileRoute("/_layout/soccer/events")({
   validateSearch: (search: Record<string, unknown>) => ({
-    competitionId:
-      typeof search.competitionId === "string"
-        ? search.competitionId
+    competitionSeasonId:
+      typeof search.competitionSeasonId === "string"
+        ? search.competitionSeasonId
         : undefined,
     teamName: typeof search.teamName === "string" ? search.teamName : undefined,
     matchId: typeof search.matchId === "string" ? search.matchId : undefined,
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/_layout/soccer/events")({
 })
 
 function EventsPage() {
-  const { competitionId, teamName, matchId } = Route.useSearch()
+  const { competitionSeasonId, teamName, matchId } = Route.useSearch()
   const navigate = Route.useNavigate()
 
   return (
@@ -31,7 +31,7 @@ function EventsPage() {
         </p>
       </div>
       <MatchHierarchyFilter
-        competitionId={competitionId}
+        competitionSeasonId={competitionSeasonId}
         teamName={teamName}
         matchId={matchId}
         onChange={(next) => navigate({ search: next })}

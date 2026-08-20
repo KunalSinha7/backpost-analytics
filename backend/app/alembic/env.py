@@ -21,12 +21,16 @@ fileConfig(config.config_file_name)
 
 from app.models import SQLModel  # noqa
 from app.core.config import settings  # noqa
-from app.models.competition import Competition  # noqa
+from app.models.competition import Competition, CompetitionSeason, Season  # noqa
+from app.models.data_source import DataSource  # noqa
 from app.models.match import SoccerMatch  # noqa
 from app.models.event import Event  # noqa
 from app.models.lineup import Lineup  # noqa
+from app.models.lineup_position import LineupPosition  # noqa
 from app.models.frame360 import Frame360  # noqa
 from app.models.player import Player  # noqa
+from app.models.position import Position  # noqa
+from app.models.team import Team, TeamAlias  # noqa
 
 target_metadata = SQLModel.metadata
 

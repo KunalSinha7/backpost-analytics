@@ -122,6 +122,19 @@ Fold `ALTER TABLE event ALTER COLUMN raw_event TYPE jsonb` into the same migrati
 
 **Fix in Phase 0: move `extra="allow"` onto the `_StatsBombRow` base class, and add `raw` columns to `soccer_match` and `competition` as well as `lineup`.** Patching only `Lineup` leaves `soccer_match` in the state that caused this section.
 
+> **Verified 2026-08-08 — `competition.raw` is NULL on all 80 rows, and that is correct, not a defect.**
+>
+> `CompetitionService.ingest` sets `raw` only on the insert branch; every one of the 80 competitions already existed, so the `else` branch returns the row untouched. This is the same shape of gap that `MatchService.backfill_raw` exists to close — but **no competition backfill is warranted**, because the payload it would capture is empty:
+>
+> ```
+> sb.competitions() columns dropped by StatsBombCompetitionRow : []
+> StatsBombCompetitionRow fields absent from the feed          : []
+> ```
+>
+> The typed model covers the competitions feed exactly, so a backfill would recover zero data. It would not help with *future* feed columns either — a run today freezes today's schema. `raw IS NULL` here carries its documented meaning: ingested before the column existed, nothing captured, nothing lost.
+>
+> **Phase 1 is unaffected.** It resolves team/player FKs from `soccer_match.raw` (3,961/3,961 populated) and `event.raw_event` (1,365,934/1,365,934 populated). Phase 2's competition split reads the typed `statsbomb_id`/`season_id`/name columns, not `raw`.
+
 ### 1.6 Other fields discarded at the parser
 
 Beyond the entity ids in §1.5, a full enumeration of `raw_event` keys and the `sb.lineups()` payload found substantial data dropped at parse time. **In scope for this plan** (decided 2026-08-06, §6/S1):
@@ -177,6 +190,17 @@ resolved by the event-feed rule        : 3,745   (100%)
 unresolved                             : 0
 ambiguous (team_name → >1 team_id)     : 0
 ```
+
+**Re-verified 2026-08-08 at 3.6× the original scale**, after the Phase 0 re-ingest grew the DB to 1,365,934 events and 13,650 lineups:
+
+```
+lineup rows                            : 13,650
+resolved by the event-feed rule        : 13,650  (100%)
+unresolved                             : 0
+ambiguous (team_name → >1 team_id)     : 0
+```
+
+Worth re-running rather than assuming: the rule was originally validated on a strict subset of the data Phase 1 will actually backfill, and its gate (`lineup.team_id` NULL count = 0) admits no misses. It holds.
 
 This works because the **lineups and events feeds agree with each other**; it is the *match* feed that carries the alias. So: never join lineup→match on name; join lineup→event on name (same vocabulary, safe) and take the id.
 
@@ -384,14 +408,33 @@ One query, no lazy loads. Keeping denormalized copies would re-open exactly the 
 | Entity | Source of truth for backfill | Re-fetch needed? |
 |---|---|---|
 | `event.team_id`, `possession_team_id`, `player_id`, `pass_recipient_id` | `raw_event` JSON — **100% coverage, verified** | **No** — pure SQL/Python over the existing table |
-| `soccer_match.home/away_team_id` | 94 of 3,961 matches derivable from their events; the rest need `sb.matches()` | Yes, but cheap: 80 cached calls, idempotent |
+| `soccer_match.home/away_team_id` | **`soccer_match.raw`** — populated for all 3,961 rows by `MatchService.backfill_raw` in Phase 0 | **No** — the re-fetch already happened |
 | `lineup.player_id` | `lineup.statsbomb_player_id` → `player.statsbomb_id` | No |
-| `event.position_id`, `substitution_replacement_id` | `raw_event` JSON — 100% of player events | No |
+| `event.substitution_replacement_id` | `raw_event` JSON — 2,185 rows carry it | No |
+| ~~`event.position_id`~~ **from `raw_event`** | ❌ **WRONG — corrected 2026-08-08, see below.** Source is `lineup.raw`'s `positions[]`; events resolve **by name** | No |
 | `lineup.team_id` | **`sb.lineups()` has no team id (§1.6).** `lineup.team_name` →(same match)→ `event.team` → `raw_event->>'team_id'`. Verified 3,745/3,745, 0 ambiguous. **Never against the match's teams** — that fails on the 20 Marseille rows | No |
 | `lineup_position`, `lineup.cards` | **Not in the DB at all** — `Lineup` has no raw column | **Yes** — re-run `sb.lineups()` for all 3,745 lineup rows |
 | `competition` / `season` / `competition_season` | derived from existing `competition` rows | No |
 
 The Marseille pair is the acceptance test for the backfill: after it runs, `Olympique de Marseille` and `Marseille` must resolve to **one** `team` row, and all 1,920 orphaned events must join.
+
+> #### ⚠️ CORRECTED 2026-08-08 — `raw_event` has no `position_id` at all
+>
+> The row above claimed `event.position_id` backfills from `raw_event` at "100% of player events". Probed against the live table:
+>
+> ```
+> events                                   : 1,365,934
+> events with raw_event->>'position_id'    :         0     ← the key does not exist
+> events with raw_event->>'position' (name):  1,360,418
+> ```
+>
+> statsbombpy flattens StatsBomb's nested `position: {id, name}` down to the **name alone**, so the numeric id never reaches `raw_event`. It survives only in `lineup.raw`'s `positions[]`, captured in Phase 0.
+>
+> **Corrected rule:** build the `position` vocabulary from `lineup.raw` (23 values, with real StatsBomb ids), then resolve `event.position_id` **by name**. Verified: 1,360,417 of 1,360,418 player events resolve. The single miss is one event whose position is `"Substitute"` — a status, not a position, with no id in StatsBomb's vocabulary — which correctly stays NULL.
+>
+> **Why this one mattered.** Writing `raw_event->>'position_id'` as the plan specified does not raise: the join simply matches nothing, the UPDATE reports success, and `position_id` stays NULL across the board. That is the same false-green shape §7.1a warns about, arrived at from a different direction — **a backfill that reads a key that does not exist is indistinguishable from one that had nothing to do.**
+>
+> This is the third plan claim to be wrong in its specifics (after §1.6/B0 and §6/B2). The pattern is consistent: each was plausible, each concerned data shape rather than logic, and each was caught only by querying rather than reasoning.
 
 ---
 
@@ -399,19 +442,49 @@ The Marseille pair is the acceptance test for the backfill: after it runs, `Olym
 
 Ordered so the capability you actually asked for (§1.3, season stats) lands early, and each phase is one PR.
 
+> #### Branching model (DECIDED 2026-08-08)
+>
+> Phases do **not** merge to `master` individually. A long-lived integration branch collects them:
+>
+> ```
+> master
+>   └── feature/db-normalization          ← integration branch, forked at 483e7cc
+>         ├── feature/phase0-normalization-foundations   → PR #35
+>         ├── feature/phase1-identity                    → PR (branches from integration)
+>         ├── feature/phase2-competition-split
+>         ├── feature/phase3-season-stats
+>         └── feature/phase4-contract
+> ```
+>
+> Each phase PR targets `feature/db-normalization` and is reviewed on its own. When Phase 4 lands, one final review of `feature/db-normalization` → `master` sees the entire normalization effort as a single coherent diff.
+>
+> **Consequences to respect:**
+>
+> - **Branch each phase off `feature/db-normalization`, not `master`** — otherwise the phase PR's diff includes every prior phase and is unreviewable.
+> - **The Alembic single-head rule now applies across the whole integration branch, not per phase.** Two phases in flight simultaneously will branch the head (§7.2). Since Phases 1–3 are single-threaded by design, this stays a non-issue — but the deferred issues ([#31](https://github.com/KunalSinha7/backpost-analytics/issues/31)/[#32](https://github.com/KunalSinha7/backpost-analytics/issues/32)/[#33](https://github.com/KunalSinha7/backpost-analytics/issues/33)), which *are* parallelizable, must serialize their migrations against this branch.
+> - **`master` keeps moving.** Rebase or merge `master` into the integration branch periodically rather than discovering the drift at final review.
+
 **DECIDED 2026-08-06.** Two changes from the first draft, both explained below the table.
 
 | Phase | Delivers | Risk | Key gate |
 |---|---|---|---|
-| **0. Foundations** | **Golden-response + `openapi.json` snapshot harness** (§7.1 — must land while the baseline is still trivially correct). `data_source` table. **`extra="allow"` on `_StatsBombRow` + `raw` columns on `lineup`/`soccer_match`/`competition`** (§1.5). **Re-fetch `sb.lineups()` for the 94 event-matches** — the only network-bound step in the plan. **`ix_event_match_id_index`** (§6/H2). **Fix `model_validate` relationship loss** (§6/B2). `app/ingest/` package + `SourceProvider` Protocol; arch rule. **No entity changes.** | Low | Snapshots captured and committed; re-ingest into empty DB matches current row counts; arch test **written red first**; `model_validate` fix has a **failing test first**; `alembic downgrade` rehearsed; `/competitions` p95 improves |
-| **1. Identity** | `team` + `player` + `position` entities; **`team_alias`** (§6/M5); `EntityResolver`; FKs on `soccer_match`/`lineup`/`event`; one backfill pass. Additive `home_team_id`/`away_team_id` on `SoccerMatchPublic` + optional `team_id` filter params (§6/H4). **Fixes the Marseille bug.** | Medium — touches 376k rows | Marseille resolves to 1 team; all 1,920 orphaned events join; **`lineup.team_id` NULL count = 0**; distinct team count = 353; responses identical **except the enumerated drift set = {team 147}** |
+| **0. Foundations** | **Golden-response + `openapi.json` snapshot harness** (§7.1 — must land while the baseline is still trivially correct). `data_source` table. **`extra="allow"` on `_StatsBombRow` + `raw` columns on `lineup`/`soccer_match`/`competition`** (§1.5). **Re-fetch `sb.lineups()` for the 94 event-matches** — the only network-bound step in the plan. **`ix_event_match_id_index`** (§6/H2). **Fix `model_validate` relationship loss** (§6/B2). **No entity changes, and no `app/ingest/` package — see the note below.** | Low | Snapshots captured and committed; `openapi.json` unchanged; `model_validate` fix has a **failing test first**; `alembic downgrade` rehearsed; `/competitions` p95 improves |
+| **1. Identity** | `team` + `player` + `position` entities; **`team_alias`** (§6/M5); `EntityResolver`; FKs on `soccer_match`/`lineup`/`event`; one backfill pass. Additive `home_team_id`/`away_team_id` on `SoccerMatchPublic` + optional `team_id` filter params (§6/H4). **Fixes the Marseille bug.** | Medium — touches 376k rows | ✅ **DONE 2026-08-08.** Marseille resolves to 1 team ✓; **`lineup.team_id` NULL count = 0** ✓ (13,650/13,650); `event.team_id` NULL count = 0 ✓ (1,365,934/1,365,934); distinct team count **354** (gate said 353 — stale, see §6/H3); responses identical except drift set **{147, 140}** (gate said {147} — see §6/H3); `openapi.json` diff is **66 insertions, 0 deletions** |
 | **2. Competition split** | `competition` / `season` / `competition_season`; `competition_id` → `competition_season_id` rename churn. **In-place `ALTER` only — never DELETE/re-INSERT `competition`** (§6/B3) | Medium — 85 refs across stack | `/competitions` response unchanged; pre-flight FD assertions (§6) pass; `soccer_match` row count unchanged |
-| **3. Season stats** | `lineup_position` (minutes played); indexes from §2.2; `/players/{id}/stats?season_id=` endpoint | Low | **Per-90 for a known player matches a hand-computed value** — not just raw counts |
-| **4. Contract** | Drop the redundant name columns; `NOT NULL` the FKs. **The `statsbomb_id` → `external_id` rename is CUT from this plan** (§6/H1) | Low-medium | Full test suite + `openapi.json` diff + manual UI pass |
+| **3. Season stats** | `lineup_position` (minutes played); indexes from §2.2; `/players/{id}/stats?season_id=` endpoint | Low | ✅ **DONE 2026-08-09.** 15,276 stints from 10,523 lineups. **Per-90 verified against a hand computation**: Nampalys Mendy, 2015/2016 — 38 apps, 3,555.82 min, 2,991 passes → `2991 × 90 / 3555.82 = 75.70`, matching the API exactly. Minutes re-derived straight from `lineup.raw` JSON (never touching `lineup_position`) gave the identical 3,555.82. Query **1,651.87 ms → 11.18 ms (148×)** |
+| **4. Contract** | Drop the redundant name columns; `NOT NULL` the FKs. **Rename `competition_season.season_ref_id` → `season_id`** once the legacy int column is dropped ([#40](https://github.com/KunalSinha7/backpost-analytics/issues/40)). **The `statsbomb_id` → `external_id` rename is CUT from this plan** (§6/H1) | Low-medium | Full test suite + `openapi.json` diff + manual UI pass; **no column named `season_ref_id` survives** |
 
 **Change 1 — Team and Player merged into one "Identity" phase.** The first draft split them for reviewability. But they share a single backfill pass over the same 376k-row table reading the same JSON blob; splitting means scanning `event` twice and running expand/backfill/cutover twice over the same files. They are structurally symmetric (same resolver, same pattern), so reviewing together is cheaper than reviewing twice.
 
-**Change 2 — provider port moved from Phase 4 to Phase 0.** Backfill code is one-shot and disposable, so StatsBomb-specific backfill is fine at any point. But **ingest** code is not: Phases 1–2 must modify `StatsBombMatchRow`/`StatsBombEventRow` to stop discarding the `*_id` columns (§1.5), and a late Phase 4 would then move those same files behind the port — touching ingest twice. Porting first means touching it once, and every later phase adds its parsing inside the adapter where it belongs.
+> #### ⚠️ CORRECTED 2026-08-06 — the provider port does NOT belong in Phase 0
+>
+> "Change 2" below was the pre-review position and **§6/M1 overrides it**. M1 was marked applied but was only half-applied: the `EntityResolver` moved to Phase 1 as intended, while the Phase 0 row and §7.3 kept the Protocol/DTOs. That contradiction is resolved here in M1's favour.
+>
+> **Phase 0 does not create `app/ingest/`.** Designing source-neutral DTOs before the `team`/`player`/`position` shapes exist means guessing at their fields and rewriting them in Phase 1. What Phase 0 *does* take from this area is the one-line `extra="allow"` fix on `_StatsBombRow` (§1.5), which needs no package and no Protocol.
+>
+> The arch rule moves with the port. Writing it at Phase 0 would commit a **permanently red** test — the port that makes it pass is Phase 4 — and per §6/M2 it may not even detect the violations, since all six statsbombpy imports are function-local. Phase 0 answers that question as a written finding instead (see §7.3 Lane C).
+
+**Change 2 (SUPERSEDED — see the correction above) — provider port moved from Phase 4 to Phase 0.** Backfill code is one-shot and disposable, so StatsBomb-specific backfill is fine at any point. But **ingest** code is not: Phases 1–2 must modify `StatsBombMatchRow`/`StatsBombEventRow` to stop discarding the `*_id` columns (§1.5), and a late Phase 4 would then move those same files behind the port — touching ingest twice. Porting first means touching it once, and every later phase adds its parsing inside the adapter where it belongs.
 
 Phase 4 is deliberately last and separable — it is the only phase that is hard to revert, and nothing depends on it.
 
@@ -468,22 +541,76 @@ Independent adversarial review. **Every factual claim below was re-verified agai
 |---|---|---|
 | **B0** | The `lineup.team_id` rule written in an earlier revision of §1.6 was **wrong** — fails on 20 Marseille rows. | ✅ **Fixed** in §1.6; corrected rule verified 3,745/3,745, 0 ambiguous |
 | **B1** | `raw_event` ids are **float strings** (`"7626.0"`); `::int` throws. Needs `::numeric::bigint`. | ✅ **Recorded** in §1.5 |
-| **B2** | `Competition.model_validate(r[0])` / `Player.model_validate(...)` build **transient copies that drop `Relationship` attrs** and are never session-attached. Phase 2's "read the name via relationship" then returns `None` — silently, no exception. | ⬜ **Fix in Phase 0**: return the attached ORM row, or an explicit tuple |
+| **B2** | ~~`model_validate` **drops** `Relationship` attrs, so Phase 2 returns `None` silently.~~ **The failure mode was wrong — see the correction below.** The real defect is a live N+1. | ✅ **Fixed in Phase 0**: repositories return the attached ORM row |
+
+> #### B2 CORRECTED 2026-08-07 — measured, not inferred
+>
+> The review's stated mechanism was wrong. `Competition.model_validate(row)` does **not** drop the relationship; it **eagerly walks** it. Probe against the live DB:
+>
+> ```
+> queries during model_validate : 1 | hitting soccer_match: 1
+> copy session-attached         : False
+> copy is original (identity)   : False
+> copy.matches length           : 34      ← populated, not dropped
+> ```
+>
+> Only the **detachment** half of B2 held. The consequence is therefore not a silent `None` in a future phase — it is a **hidden N+1 in production today**: one extra query per row on `/competitions` and `/players`, plus full hydration of every `SoccerMatch` for a column no caller reads. At `limit=100` that is 100 extra queries; a single Ligue 1 season is 377 matches hydrated per row.
+>
+> The fix (return the session-attached ORM row) is unchanged and correct. Its value is higher than the plan claimed: it repairs a live performance bug rather than pre-empting a future one.
+>
+> **Method note:** this is the second claim in the review chain to need correction against reality (the first being the `lineup.team_id` rule in §1.6). Both were plausible and both were wrong in their specifics. Treat remaining unverified review items — **M3** especially — as hypotheses until probed.
 | **B3** | `Competition.matches` has `cascade_delete=True`. If Phase 2 recreates `competition` rows rather than altering in place, **3,961 matches and 376k events are deleted**. | ⬜ **Rule added** to Phase 2: in-place `ALTER` only; assert `soccer_match` row count inside the migration |
 
 ### High
 
 - **H1 — Cut the `statsbomb_id` rename from this plan.** It is in the `required` list of 5 public schemas and is a **rendered UI column** (`PlayerTable.tsx:57`), plus `competition_statsbomb_id` is a public query param. That is a breaking OpenAPI change delivering **zero capability** — `source_id`/`external_id` can coexist with `statsbomb_id` indefinitely. Do it when a second source actually lands. ✅ **Cut** from Phase 4.
-- **H2 — `event.match_id` has no index.** Verified: `event` has only `event_pkey` and `ix_event_statsbomb_id`. This is the primary read path (`read_events` defaults `limit=10000`) *and* backs both `_events_exist_clause` EXISTS subqueries, so `/competitions?has_events=true` seq-scans 376k rows. ✅ **Moved to Phase 0** as `ix_event_match_id_index (match_id, "index")` — pure win, independent of normalization, and gives a clean before/after number.
+- **H2 — `event.match_id` has no index.** Verified: `event` has only `event_pkey` and `ix_event_statsbomb_id`. This is the primary read path (`read_events` defaults `limit=10000`) *and* backs both `_events_exist_clause` EXISTS subqueries, so `/competitions?has_events=true` seq-scans 376k rows. ✅ **Moved to Phase 0** as `ix_event_match_id_index (match_id, "index")`.
+
+  **Measured 2026-08-07 — and that index alone was NOT enough.** With only the event index, `/competitions?has_events=true` still took **14,136 ms**: the planner did use it, then seq-scanned `soccer_match` once per competition because the correlating column was unindexed. `ix_soccer_match_competition_id` was the missing half:
+
+  ```
+  event index only                : 14,136 ms
+  + ix_soccer_match_competition_id:      5.5 ms     ← 2,560×
+  ```
+
+  Both now ship in Phase 0 (revisions `87e65e37d56a` and `87e2e9cbdd6e`). The plan had `soccer_match.competition_id` slated for Phase 3; it is a pure perf win with no schema semantics, so there was no reason to wait.
+
+  **Lesson to carry into later phases:** an index the planner *uses* is not the same as an index that makes the query *fast*. `EXPLAIN` proudly showed `Index Only Scan using ix_event_match_id_index` while the statement took 14 seconds. **Verify perf gates by timing, not by grepping the plan for an index name.**
 - **H3 — "byte-identical responses" is unachievable as a gate.** `read_events(team=...)` filters *event*-feed vocabulary while the dropdown is populated from *match*-feed vocabulary — **already broken for Marseille**; fixing it necessarily changes the response. ✅ **Gate restated** as "identical except the enumerated drift set = {team 147}". Also adds: assert distinct team count == 353 after the `sb.matches()` backfill, and set the tie-break explicitly — **match-feed name wins** (it is what the API emits today).
+
+  > **MEASURED 2026-08-08 — both numbers in this finding were stale, and the drift is worse than described.**
+  >
+  > | Gate as written | Actual | Why |
+  > |---|---|---|
+  > | drift set = `{147}` | **`{147, 140}`** | `Stade Malherbe Caen` / `Caen` has the identical split. Found by querying `team_alias`, not by inspection |
+  > | distinct teams = 353 | **354** | The 353 predates the fuller Ligue 1 ingest |
+  >
+  > **The failure mode was also mis-stated.** H3 implies the event feed uses one spelling and the match feed another. It does not — the *event feed itself* uses both, depending on the match:
+  >
+  > ```
+  > team 147  "Olympique de Marseille"  54,977 events   (27 matches, home and away)
+  > team 147  "Marseille"               20,742 events   (11 matches, away only)
+  > ```
+  >
+  > So the old string filter did not return *nothing* for the affected teams — it returned a **partial set**, silently dropping 20,742 events. An empty result gets reported as a bug; a plausible-looking short one does not. Confirmed end-to-end on a real away match: filtering by the dropdown's `"Olympique de Marseille"` returned **0** of that match's 2,159 Marseille events before, and all 2,159 after.
+  >
+  > **Consequence for the implementation:** the team filter ORs the resolved-id clause with the original name clause rather than replacing it. A straight swap would hide every event still carrying a NULL `team_id`, which is exactly the population a partial backfill leaves behind.
 - **H4 — Phase 1 ships nothing visible.** ✅ Added *additive* `home_team_id`/`away_team_id` to `SoccerMatchPublic` and optional `team_id` filter params. No frontend change required; the phase becomes demonstrable.
 
 ### Medium
 
 - **M1 — `EntityResolver` must move to Phase 1, not Phase 4.** Phases 1–2 cannot avoid StatsBomb-specific ingest code (ingest has to populate the new FKs or the backfill decays). ✅ Applied. The `SourceProvider` Protocol/DTOs stay at Phase 4 — that's a `git mv`, not a rewrite. **Explicitly do not port fully first**: designing source-neutral DTOs before the entity shapes settle means rewriting them in Phase 1.
 - **M2 — The proposed arch rule may be vacuous.** All five `from statsbombpy import sb` are **function-local**. Verify pytestarch descends into function bodies — otherwise the test is green on day one while every violation persists. ⬜ **Write the test red first.** Also widen its scope: `api/routes/competition.py` imports statsbombpy **inside a route handler** and makes a synchronous vendor HTTP call in the request path.
-- **M3 — Resolver will duplicate within a run.** `select` → miss → `add()` without flush re-misses on the next event, and `EventService` commits per match. ⬜ Contract: in-session dict cache on `(source_id, external_id)` + DB `UNIQUE` + `INSERT … ON CONFLICT DO NOTHING RETURNING id`.
-- **M4 — Missing constraints** (verified `lineup_dupes = 0`, all safe to add): `UNIQUE(lineup.match_id, player_id)` — today idempotency rests solely on `has_lineups_for_match`, so a half-failed lineup ingest is **permanently stuck and silently skipped**, which matters more now that Phase 0 re-fetches lineups. Plus `UNIQUE(team.source_id, external_id)`, `UNIQUE(player.source_id, external_id)`, `UNIQUE(frame360.event_id)`. Also: `MatchService.ingest` only ever **inserts**, so the team-id backfill cannot be "just re-run ingest" — it needs a dedicated update path.
+- **M3 — Resolver will duplicate within a run.** ⚠️ **WRONG AS STATED — probed 2026-08-07.** The claim assumes a pending `add()` is invisible to the next `select`. It is not: `Session.autoflush` defaults to `True`, so SQLAlchemy flushes before the query and the lookup finds it.
+
+  ```
+  session.autoflush = True
+  miss → add() → look again  : FOUND    (no duplicate)
+  same with autoflush=False  : MISSED   (would duplicate)
+  ```
+
+  So the resolver is safe **by default**, and the hazard is real only if someone disables autoflush. Keep the `UNIQUE(source_id, external_id)` constraint from M4 as defence in depth — it costs nothing and makes the failure loud — but the in-session dict cache is a performance choice, not a correctness requirement. Do not build it as a bug fix.
+- **M4 — Missing constraints** (verified `lineup_dupes = 0`, all safe to add): `UNIQUE(lineup.match_id, player_id)` — today idempotency rests solely on `has_lineups_for_match`, so a half-failed lineup ingest is **permanently stuck and silently skipped**, which matters more now that Phase 0 re-fetches lineups. Plus `UNIQUE(team.source_id, external_id)`, `UNIQUE(player.source_id, external_id)`, `UNIQUE(frame360.event_id)`. Also: `MatchService.ingest` only ever **inserts**, so the team-id backfill cannot be "just re-run ingest" — it needs a dedicated update path. ✅ **Done in Phase 0** as `MatchService.backfill_raw`, which is idempotent (rows with a payload are skipped, and a second pass does not even re-fetch). Run against dev: **3,961/3,961 populated, all carrying `home_team_id`**, including `147` on the Marseille fixture — the same id the event feed uses. Phase 1's team resolution is therefore in-database, with no network pass.
 - **M5 — Add `team_alias(team_id, source_id, name)` in Phase 1.** The team merge is itself irreversible: collapsing `{"Marseille", "Olympique de Marseille"}` destroys per-feed provenance that only the string columns preserve today. Populated as a by-product of the resolver, it makes the merge auditable and Phase 4 genuinely reversible. ✅ Added to Phase 1.
 
 ### Serialization — the "strings via relationship" plan needs surgery
@@ -555,6 +682,25 @@ Two Phase 0 items must also be **written red first**, because both are fixes for
 
 Add one `alembic downgrade` rehearsal on Phase 0's own migration, where the stakes are lowest. Existing migrations do have real `downgrade()` bodies (not stubs), but nothing has exercised them.
 
+### 7.1a ⚠️ Running the test suite DESTROYS the data every backfill reads
+
+Discovered the hard way on 2026-08-06: `bash scripts/tests-start.sh` deleted all 376,362 events, 3,961 matches, 80 competitions and 3,745 lineups from the dev database.
+
+**Mechanism.** `backend/tests/conftest.py` declares a **session-scoped, `autouse=True`** `db` fixture that calls `_wipe_soccer_data()` on both setup and teardown — unconditional `DELETE` against Event, Frame360, Lineup, SoccerMatch, Competition. And there is **no separate test database**: `.env` sets `POSTGRES_DB=app` and the tests bind `app.core.db.engine`, the same engine the dev server uses.
+
+**Why this is a plan-level problem, not just an annoyance.** §1.5 says the Phase 1 event backfill is "a pure in-database operation, no re-fetch" — which is true, but only because the ids live in `event.raw_event`. **A test run deletes those rows.** So the sequence "write migration → run tests → run backfill" silently destroys the backfill's own input, and the backfill then succeeds against an empty table and reports zero rows updated. That is a false green.
+
+**✅ FIXED 2026-08-07** — two layers, because either alone is defeatable:
+
+1. **Isolation.** `scripts/tests-start.sh` exports `POSTGRES_DB=${POSTGRES_DB_TEST:-${POSTGRES_DB}_test}` before Python starts — the engine is built from settings at import time, so this needs no application change. The script creates the database if absent and brings it up with `alembic upgrade head`, so schema comes from migrations exactly as in production rather than from `create_all()`.
+2. **A guard.** `conftest._assert_disposable_database()` refuses to run unless the connected database name ends in `_test`, and `_wipe_soccer_data` calls it first. Running `pytest` by hand against dev now raises immediately instead of deleting.
+
+Verified end-to-end: dev DB held 1,365,934 events / 3,961 matches / 80 competitions **before and after** a full suite run; `app` and `app_test` exist side by side; the guard raises when pointed at `app`.
+
+**Still required for Phase 1** (the data hazard is closed, the false-green one is not):
+
+- Phase 1's gate must assert non-zero row counts *before* the backfill, not only after — otherwise an empty table passes every check and reports success.
+
 ### 7.2 The hard constraint on parallelism: Alembic serializes all schema work
 
 Verified: the repo has a **single linear head** (`3cfb9503c5b7`), and `env.py` sets no `transaction_per_migration`, so each migration runs in one transaction.
@@ -571,7 +717,7 @@ Every generated revision hardcodes `down_revision = '<head at generation time>'`
 |---|---|---|---|
 | **A — Verification** | Golden + openapi harness (§7.1) | `backend/tests/**` only | None |
 | **B — Repository fixes** | `model_validate` relationship loss (red first) | `repositories/competition.py`, `repositories/player.py` | None |
-| **C — Ingest skeleton** | `app/ingest/` package, `SourceProvider` Protocol, arch rule (red first) | new package + `tests/test_architecture.py` | None |
+| **C — Parser trap** | `extra="allow"` onto `_StatsBombRow` (§1.5) + a written finding on whether pytestarch detects function-local imports (§6/M2). **No `app/ingest/` package, no Protocol, no committed arch rule** — see the correction in §4 | `utils/statsbomb.py`, new `tests/soccer/test_statsbomb_rows.py` | None |
 | **D — Schema (SERIALIZED)** | `data_source`, `raw` columns, `extra="allow"`, `ix_event_match_id_index`, lineups re-fetch | `models/**`, `utils/statsbomb.py`, `alembic/versions/**` | **Owns all migrations** |
 
 Lane D is one worker start-to-finish. A/B/C run concurrently against it. Lane A should finish first — the snapshots are the safety net for everything after.
