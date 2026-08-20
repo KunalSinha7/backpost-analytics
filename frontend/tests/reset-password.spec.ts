@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test"
-import { findLastEmail } from "./utils/mailcatcher"
+import { emailUrl, findLastEmail } from "./utils/mailpit"
 import { randomEmail, randomPassword } from "./utils/random"
 import { logInUser, signUpNewUser } from "./utils/user"
 
@@ -46,23 +46,19 @@ test("User can reset password successfully using the link", async ({
 
   const emailData = await findLastEmail({
     request,
-    filter: (e) => e.recipients.includes(`<${email}>`),
+    query: `to:${email}`,
     timeout: 5000,
   })
 
-  await page.goto(
-    `${process.env.MAILCATCHER_HOST}/messages/${emailData.id}.html`,
-  )
+  await page.goto(emailUrl(emailData))
 
   const selector = 'a[href*="/reset-password?token="]'
 
-  let url = await page.getAttribute(selector, "href")
-
-  // TODO: update var instead of doing a replace
-  url = url!.replace("http://localhost/", "http://localhost:5173/")
+  const url = await page.getAttribute(selector, "href")
+  const resetUrl = new URL(url!)
 
   // Set the new password and confirm it
-  await page.goto(url)
+  await page.goto(`${resetUrl.pathname}${resetUrl.search}`)
 
   await page.getByTestId("new-password-input").fill(newPassword)
   await page.getByTestId("confirm-password-input").fill(newPassword)
@@ -101,20 +97,18 @@ test("Weak new password validation", async ({ page, request }) => {
 
   const emailData = await findLastEmail({
     request,
-    filter: (e) => e.recipients.includes(`<${email}>`),
+    query: `to:${email}`,
     timeout: 5000,
   })
 
-  await page.goto(
-    `${process.env.MAILCATCHER_HOST}/messages/${emailData.id}.html`,
-  )
+  await page.goto(emailUrl(emailData))
 
   const selector = 'a[href*="/reset-password?token="]'
-  let url = await page.getAttribute(selector, "href")
-  url = url!.replace("http://localhost/", "http://localhost:5173/")
+  const url = await page.getAttribute(selector, "href")
+  const resetUrl = new URL(url!)
 
   // Set a weak new password
-  await page.goto(url)
+  await page.goto(`${resetUrl.pathname}${resetUrl.search}`)
   await page.getByTestId("new-password-input").fill(weakPassword)
   await page.getByTestId("confirm-password-input").fill(weakPassword)
   await page.getByRole("button", { name: "Reset Password" }).click()
