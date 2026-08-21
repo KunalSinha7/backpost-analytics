@@ -6,7 +6,7 @@
       "name": "fastapi-cloud",
       "devDependencies": {
         "@hey-api/openapi-ts": "0.97.3",
-        "frontend": "workspace:*",
+        "frontend": "^2.0.0-alpha.4",
       },
     },
     "frontend": {

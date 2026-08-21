@@ -8,9 +8,6 @@ uv run python -c "import app.main; import json; print(json.dumps(app.main.app.op
 cd ..
 mv openapi.json frontend/
 bun run --filter frontend generate-client
-if [ -f frontend/src/client/core/bodySerializer.ts ]; then
-  python3 -c "p='frontend/src/client/core/bodySerializer.ts'; s=open(p).read().replace('JSON.stringify(body, (key, value)', 'JSON.stringify(body, (_key, value)'); open(p,'w').write(s)"
-fi
 if ! grep -q "from '../services'" frontend/src/client/index.ts; then
   printf "\nexport * from '../services';\n" >> frontend/src/client/index.ts
 fi
