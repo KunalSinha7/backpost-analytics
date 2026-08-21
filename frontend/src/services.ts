@@ -31,6 +31,7 @@ import {
 } from "./client/sdk.gen"
 import type {
   BodyLoginLoginAccessToken as AccessToken,
+  BodyLoginLoginAccessToken,
   CompetitionsPublic,
   EventsPublic,
   Frames360Public,
@@ -53,6 +54,8 @@ import type {
   UserUpdate,
   UserUpdateMe,
 } from "./client/types.gen"
+
+export type Body_login_login_access_token = BodyLoginLoginAccessToken
 
 export class UsersService {
   public static async readUsers(options?: {

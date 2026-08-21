@@ -30,6 +30,7 @@ repos:
         language: system
         types: [text]
         files: ^frontend/
+        pass_filenames: false
 
       - id: local-ruff-check
         name: ruff check
