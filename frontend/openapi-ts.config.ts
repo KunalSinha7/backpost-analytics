@@ -6,13 +6,7 @@ export default defineConfig({
 
   plugins: [
     { name: "@hey-api/client-axios", throwOnError: true },
-    { name: "@hey-api/typescript", case: "preserve" },
-    {
-      name: "@hey-api/sdk",
-      strategy: "byTags",
-      methods: "static",
-      containerName: "{{name}}Service",
-      methodName: (name: string): string => name.replace(/^[^-]*-/, ""),
-    },
+    "@hey-api/typescript",
+    "@hey-api/sdk",
   ],
 })
