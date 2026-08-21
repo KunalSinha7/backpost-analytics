@@ -22,5 +22,5 @@ export const createUser = async ({
       full_name: "Test User",
     },
   })
-  return response.data
+  return (response as any).data ?? response
 }
