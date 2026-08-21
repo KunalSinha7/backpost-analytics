@@ -28,5 +28,5 @@ soccer_router.include_router(frame360.router)
 soccer_router.include_router(player.router)
 api_router.include_router(soccer_router)
 
-if settings.ENVIRONMENT == "local":
+if settings.is_development:
     api_router.include_router(private.router)

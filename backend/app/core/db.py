@@ -24,7 +24,7 @@ from app.models.position import Position  # noqa: F401
 from app.models.team import Team, TeamAlias  # noqa: F401
 from app.repositories.user import create_user
 
-engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
+engine = create_engine(str(settings.DATABASE_URL or settings.SQLALCHEMY_DATABASE_URI))
 
 STATSBOMB_SOURCE_KEY = "statsbomb"
 

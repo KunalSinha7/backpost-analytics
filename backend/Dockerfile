@@ -1,3 +1,22 @@
+FROM oven/bun:1 AS frontend-build
+
+WORKDIR /app
+
+COPY package.json bun.lock /app/
+COPY packages /app/packages/
+COPY frontend/package.json /app/frontend/
+
+WORKDIR /app/frontend
+
+RUN bun install
+
+COPY ./frontend /app/frontend
+
+ARG VITE_API_URL=
+
+RUN bun run build
+
+
 FROM python:3.14.5
 
 ENV PYTHONUNBUFFERED=1
@@ -32,6 +51,8 @@ COPY ./backend/scripts /app/backend/scripts
 COPY ./backend/pyproject.toml ./backend/alembic.ini /app/backend/
 
 COPY ./backend/app /app/backend/app
+
+COPY --from=frontend-build /app/backend/app/frontend /app/backend/app/frontend
 
 COPY ./backend/tests /app/backend/tests
 

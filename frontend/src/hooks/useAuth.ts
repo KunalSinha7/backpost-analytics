@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 
 import {
-  type Body_login_login_access_token as AccessToken,
+  type BodyLoginLoginAccessToken as AccessToken,
   LoginService,
   type UserPublic,
   type UserRegister,
