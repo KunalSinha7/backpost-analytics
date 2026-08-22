@@ -80,9 +80,7 @@ def test_event_relation_cascades_on_event_delete(
     assert db.get(Event, event_b.id) is not None
 
 
-def test_key_pass_and_assisted_shot_self_fks(
-    db: Session, match_id: uuid.UUID
-) -> None:
+def test_key_pass_and_assisted_shot_self_fks(db: Session, match_id: uuid.UUID) -> None:
     key_pass = create_event(
         db, match_id, statsbomb_id=str(uuid.uuid4()), type_name="Pass", index=5
     )
