@@ -9,9 +9,7 @@ class StadiumRepository:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def get_by_external(
-        self, source_id: uuid.UUID, external_id: str
-    ) -> Stadium | None:
+    def get_by_external(self, source_id: uuid.UUID, external_id: str) -> Stadium | None:
         return self.session.exec(
             select(Stadium).where(
                 Stadium.source_id == source_id, Stadium.external_id == external_id

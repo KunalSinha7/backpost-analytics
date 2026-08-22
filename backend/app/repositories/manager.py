@@ -9,9 +9,7 @@ class ManagerRepository:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def get_by_external(
-        self, source_id: uuid.UUID, external_id: str
-    ) -> Manager | None:
+    def get_by_external(self, source_id: uuid.UUID, external_id: str) -> Manager | None:
         return self.session.exec(
             select(Manager).where(
                 Manager.source_id == source_id, Manager.external_id == external_id
