@@ -14,6 +14,63 @@ logger = logging.getLogger(__name__)
 
 _END_LOCATION_FIELDS = ("pass_end_location", "shot_end_location", "carry_end_location")
 
+# Metric/qualifier fields promoted to columns (issue #33). These arrive in
+# `extra` (the raw event row's model_dump()) as plain python scalars already —
+# the float-string cast hazard documented in the backfill migration is a
+# quirk of reading them back out of stored JSON text, not of this code path.
+_METRIC_FIELDS = (
+    "shot_statsbomb_xg",
+    "pass_length",
+    "pass_angle",
+    "foul_committed_card",
+    "bad_behaviour_card",
+    "pass_height",
+    "pass_body_part",
+    "pass_outcome",
+    "pass_type",
+    "pass_technique",
+    "shot_outcome",
+    "shot_body_part",
+    "shot_technique",
+    "shot_type",
+    "duel_type",
+    "duel_outcome",
+    "dribble_outcome",
+    "ball_receipt_outcome",
+    "interception_outcome",
+    "goalkeeper_type",
+    "goalkeeper_outcome",
+    "goalkeeper_position",
+    "goalkeeper_technique",
+    "goalkeeper_body_part",
+    "counterpress",
+    "pass_cross",
+    "pass_switch",
+    "pass_through_ball",
+    "pass_goal_assist",
+    "pass_shot_assist",
+    "pass_cut_back",
+    "pass_deflected",
+    "pass_no_touch",
+    "pass_miscommunication",
+    "shot_first_time",
+    "shot_one_on_one",
+    "shot_open_goal",
+    "shot_deflected",
+    "shot_redirect",
+    "shot_saved_off_target",
+    "shot_saved_to_post",
+    "shot_follows_dribble",
+    "dribble_nutmeg",
+    "dribble_overrun",
+    "dribble_no_touch",
+    "foul_committed_advantage",
+    "foul_committed_penalty",
+    "foul_won_advantage",
+    "foul_won_defensive",
+    "foul_won_penalty",
+)
+
 
 def _extract_end_location(
     event_row: StatsBombEventRow,
@@ -136,6 +193,7 @@ class EventService:
                     off_camera=event_row.off_camera,
                     out=event_row.out,
                     raw_event=event_row.model_dump(),
+                    **{field: extra.get(field) for field in _METRIC_FIELDS},
                 )
                 batch.append(event)
                 existing_ids.add(event_row.id)
