@@ -13,9 +13,11 @@ bun install
 bun run dev
 ```
 
-* Then open your browser at http://localhost:5173/.
+Then open <http://localhost:5173/> in your browser.
 
-Notice that this live server is not running inside Docker, it's for local development, and that is the recommended workflow. Once you are happy with your frontend, you can build the frontend Docker image and start it, to test it in a production-like environment. But building the image at every change will not be as productive as running the local development server with live reload.
+Notice that this live server is not running inside Docker, it's for local development, and that is the recommended workflow. It expects the backend at `http://localhost:8000`, as configured in `frontend/.env`.
+
+To serve the frontend with FastAPI instead, run `bun run build` from the `frontend` directory and open <http://localhost:8000>. The build is written to `backend/app/frontend`, so rebuild it after making frontend changes.
 
 Check the file `package.json` to see other available options.
 

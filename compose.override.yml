@@ -1,10 +1,5 @@
 services:
 
-  # Local services are available on their ports, but also available on:
-  # http://api.localhost.tiangolo.com: backend
-  # http://dashboard.localhost.tiangolo.com: frontend
-  # etc. To enable it, update .env, set:
-  # DOMAIN=localhost.tiangolo.com
   proxy:
     image: traefik:v3.7.4
     volumes:
@@ -85,6 +80,13 @@ services:
             - ./frontend/dist
             - ./frontend/blob-report
             - ./frontend/test-results
+            # Only the Vite build output is copied into the backend image, so
+            # docs and test files cannot affect it. Rebuilding on them wastes a
+            # full image build (and can strand containers, see docker/compose#13717).
+            - playwright-report
+            - tests
+            - README.md
+            - Dockerfile.playwright
     # TODO: remove once coverage is done locally
     volumes:
       - ./backend/htmlcov:/app/backend/htmlcov
@@ -110,15 +112,15 @@ services:
     depends_on:
       - backend
       - mailpit
-    env_file:
-      - .env
     environment:
+      - FIRST_SUPERUSER=${FIRST_SUPERUSER?Variable not set}
+      - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD?Variable not set}
       - PLAYWRIGHT_BASE_URL=http://backend:8000
       - VITE_API_URL=http://backend:8000
       - MAILPIT_HOST=http://mailpit:8025
       # For the reports when run locally
       - PLAYWRIGHT_HTML_HOST=0.0.0.0
-      - CI=${CI}
+      - CI=${CI:-}
     volumes:
       - ./frontend/blob-report:/app/frontend/blob-report
       - ./frontend/test-results:/app/frontend/test-results

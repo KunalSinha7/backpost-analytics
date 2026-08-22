@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 docker compose watch          # start all services with live reload
 docker compose logs backend   # tail a specific service
 ```
+The whole app (SPA + API) is served by FastAPI at http://localhost:8000 — there is no separate frontend container. Mailpit is at http://localhost:8025.
 
 ### Backend (local, without Docker)
 ```bash
@@ -92,5 +93,5 @@ JWT tokens. The `/_layout` route group enforces auth client-side; the backend en
 - Add new API endpoints by creating/editing a file in `backend/app/api/routes/`, then registering it in `backend/app/api/main.py`
 - Add new DB tables/columns by editing `backend/app/models.py`, then running an Alembic migration
 - After any backend model or route change that affects the OpenAPI schema, regenerate the frontend client
-- Email templates are MJML source in `backend/app/email-templates/src/`; compile to HTML with the VS Code MJML extension and save to `build/`
+- Email templates are React components in `packages/react-email/emails/*.tsx`; edit them there, preview with `bun run dev` (port 3333) and export the compiled HTML to `backend/app/email-templates/` with `bun run export`
 - API is versioned at `/api/v1`; the `private` router is for internal/test use and is excluded in non-local environments
