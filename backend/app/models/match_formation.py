@@ -38,9 +38,7 @@ class MatchFormationSlot(SQLModel, table=True):
 
     __tablename__ = "match_formation_slot"  # type: ignore[assignment]
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    match_formation_id: uuid.UUID = Field(
-        foreign_key="match_formation.id", index=True
-    )
+    match_formation_id: uuid.UUID = Field(foreign_key="match_formation.id", index=True)
     player_id: uuid.UUID | None = Field(
         default=None, foreign_key="player.id", index=True
     )
