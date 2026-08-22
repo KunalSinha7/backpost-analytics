@@ -5,9 +5,13 @@ import pytest
 from sqlmodel import Session, select
 
 from app.exceptions.event import StatsBombFetchError
+from app.models.competition_stage import CompetitionStage
 from app.models.event import Event
+from app.models.manager import Manager
 from app.models.match import SoccerMatch
 from app.models.player import Player
+from app.models.referee import Referee
+from app.models.stadium import Stadium
 from app.services.competition import CompetitionService
 from app.services.event import EventService
 from app.services.frame360 import Frame360Service
@@ -270,6 +274,125 @@ def test_match_service_backfill_raw_survives_fetch_error(db: Session) -> None:
 
     with patch("statsbombpy.sb.matches", side_effect=Exception("network error")):
         updated = MatchService(db).backfill_raw([comp])
+
+    assert updated == 0
+
+
+# IDs 6022-6026 / matches 60019-60023 reserved for deferred-entity tests
+# (issue #30: referee, stadium, home/away manager, competition_stage).
+
+
+def _matches_df_with_deferred_entities(match_id: int) -> pd.DataFrame:
+    """A match row carrying the referee/stadium/manager/competition_stage ids.
+
+    `StatsBombMatchRow` declares none of these; they survive only because
+    `_StatsBombRow` sets extra="allow", same as the team id columns.
+    """
+    df = _matches_df(match_id)
+    df["referee"] = "A. Referee"
+    df["stadium"] = "Test Arena"
+    df["competition_stage"] = "Final"
+    df["home_manager_name"] = "Home Manager"
+    df["away_manager_name"] = "Away Manager"
+    df["referee_id"] = 9001
+    df["stadium_id"] = 9002
+    df["home_manager_id"] = 9003
+    df["away_manager_id"] = 9004
+    df["competition_stage_id"] = 9005
+    return df
+
+
+def test_match_service_ingest_resolves_deferred_entities(db: Session) -> None:
+    comp = create_competition(db, statsbomb_id=6022, season_id=6022)
+    with patch(
+        "statsbombpy.sb.matches", return_value=_matches_df_with_deferred_entities(60019)
+    ):
+        n = MatchService(db).ingest([comp])
+    assert n == 1
+
+    match = db.exec(select(SoccerMatch).where(SoccerMatch.statsbomb_id == 60019)).one()
+    assert match.referee_id is not None
+    assert match.stadium_id is not None
+    assert match.home_manager_id is not None
+    assert match.away_manager_id is not None
+    assert match.competition_stage_id is not None
+    assert match.home_manager_id != match.away_manager_id
+
+    assert db.get(Referee, match.referee_id).name == "A. Referee"
+    assert db.get(Stadium, match.stadium_id).name == "Test Arena"
+    assert db.get(Manager, match.home_manager_id).name == "Home Manager"
+    assert db.get(Manager, match.away_manager_id).name == "Away Manager"
+    assert db.get(CompetitionStage, match.competition_stage_id).name == "Final"
+
+
+def test_match_service_ingest_leaves_deferred_entities_null_when_absent(
+    db: Session,
+) -> None:
+    """`_matches_df` carries no referee/stadium/manager ids — only names."""
+    comp = create_competition(db, statsbomb_id=6023, season_id=6023)
+    with patch("statsbombpy.sb.matches", return_value=_matches_df(60020)):
+        MatchService(db).ingest([comp])
+
+    match = db.exec(select(SoccerMatch).where(SoccerMatch.statsbomb_id == 60020)).one()
+    assert match.referee_id is None
+    assert match.stadium_id is None
+    assert match.home_manager_id is None
+    assert match.away_manager_id is None
+    assert match.competition_stage_id is None
+
+
+def test_match_service_backfill_deferred_entities_populates_existing_rows(
+    db: Session,
+) -> None:
+    comp = create_competition(db, statsbomb_id=6024, season_id=6024)
+    with patch("statsbombpy.sb.matches", return_value=_matches_df(60021)):
+        MatchService(db).ingest([comp])
+    db.commit()
+    match = db.exec(select(SoccerMatch).where(SoccerMatch.statsbomb_id == 60021)).one()
+    assert match.referee_id is None
+
+    with patch(
+        "statsbombpy.sb.matches", return_value=_matches_df_with_deferred_entities(60021)
+    ):
+        updated = MatchService(db).backfill_deferred_entities([comp])
+
+    assert updated == 1
+    db.refresh(match)
+    assert match.referee_id is not None
+    assert match.stadium_id is not None
+    assert match.home_manager_id is not None
+    assert match.away_manager_id is not None
+    assert match.competition_stage_id is not None
+
+
+def test_match_service_backfill_deferred_entities_is_idempotent(db: Session) -> None:
+    comp = create_competition(db, statsbomb_id=6025, season_id=6025)
+    with patch("statsbombpy.sb.matches", return_value=_matches_df(60022)):
+        MatchService(db).ingest([comp])
+    db.commit()
+
+    with patch(
+        "statsbombpy.sb.matches", return_value=_matches_df_with_deferred_entities(60022)
+    ):
+        first = MatchService(db).backfill_deferred_entities([comp])
+    # A second pass must not even re-fetch, once every FK is resolved.
+    with patch("statsbombpy.sb.matches", side_effect=AssertionError("re-fetched")):
+        second = MatchService(db).backfill_deferred_entities([comp])
+
+    assert first == 1
+    assert second == 0
+
+
+def test_match_service_backfill_deferred_entities_survives_fetch_error(
+    db: Session,
+) -> None:
+    comp = create_competition(db, statsbomb_id=6026, season_id=6026)
+    with patch("statsbombpy.sb.matches", return_value=_matches_df(60023)):
+        MatchService(db).ingest([comp])
+    db.commit()
+
+    with patch("statsbombpy.sb.matches", side_effect=Exception("network error")):
+        updated = MatchService(db).backfill_deferred_entities([comp])
 
     assert updated == 0
 

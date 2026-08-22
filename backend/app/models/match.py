@@ -37,6 +37,18 @@ class SoccerMatchBase(SQLModel):
     away_team_id: uuid.UUID = Field(foreign_key="team.id", index=True)
 
 
+# Fields dropped from `SoccerMatchPublic.from_row`'s dump — kept off
+# `SoccerMatchBase` deliberately, see the comment on `SoccerMatch` below.
+_TABLE_ONLY_FIELDS = {
+    "raw",
+    "referee_id",
+    "stadium_id",
+    "home_manager_id",
+    "away_manager_id",
+    "competition_stage_id",
+}
+
+
 class SoccerMatch(SoccerMatchBase, table=True):
     __tablename__ = "soccer_match"  # type: ignore[assignment]
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -47,6 +59,27 @@ class SoccerMatch(SoccerMatchBase, table=True):
     # none_as_null: see the note on Lineup.raw.
     raw: dict | None = Field(
         default=None, sa_column=Column(JSONB(none_as_null=True), nullable=True)
+    )
+    # Deferred entities (issue #30): nullable FKs alongside the free-text
+    # columns above (`referee`, `stadium`, `home_manager_name`,
+    # `away_manager_name`, `competition_stage_name`), which are left in place.
+    # Nothing reads these yet — same "expand only" shape as Phase 1's
+    # identity work — so, like `raw`, they stay off the Base/Public contract
+    # rather than becoming part of the API surface for no consumer.
+    referee_id: uuid.UUID | None = Field(
+        default=None, foreign_key="referee.id", index=True
+    )
+    stadium_id: uuid.UUID | None = Field(
+        default=None, foreign_key="stadium.id", index=True
+    )
+    home_manager_id: uuid.UUID | None = Field(
+        default=None, foreign_key="manager.id", index=True
+    )
+    away_manager_id: uuid.UUID | None = Field(
+        default=None, foreign_key="manager.id", index=True
+    )
+    competition_stage_id: uuid.UUID | None = Field(
+        default=None, foreign_key="competition_stage.id", index=True
     )
 
 
@@ -76,7 +109,7 @@ class SoccerMatchPublic(SoccerMatchBase):
         payload and has never been part of the contract.
         """
         return cls(
-            **match.model_dump(exclude={"raw"}),
+            **match.model_dump(exclude=_TABLE_ONLY_FIELDS),
             home_team=home_team,
             away_team=away_team,
             has_events=has_events,

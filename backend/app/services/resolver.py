@@ -5,11 +5,19 @@ from typing import Any
 from sqlmodel import Session, select
 
 from app.models.competition import Competition, Season
+from app.models.competition_stage import CompetitionStage
 from app.models.data_source import DataSource
+from app.models.manager import Manager
 from app.models.player import Player
 from app.models.position import Position
+from app.models.referee import Referee
+from app.models.stadium import Stadium
 from app.models.team import Team, TeamAlias
+from app.repositories.competition_stage import CompetitionStageRepository
+from app.repositories.manager import ManagerRepository
 from app.repositories.position import PositionRepository
+from app.repositories.referee import RefereeRepository
+from app.repositories.stadium import StadiumRepository
 from app.repositories.team import TeamRepository
 
 logger = logging.getLogger(__name__)
@@ -60,6 +68,10 @@ class EntityResolver:
         self.session = session
         self.teams = TeamRepository(session)
         self.positions = PositionRepository(session)
+        self.referees = RefereeRepository(session)
+        self.stadiums = StadiumRepository(session)
+        self.managers = ManagerRepository(session)
+        self.competition_stages = CompetitionStageRepository(session)
         self.source = self._get_or_create_source(source_key)
         # Performance only, not correctness: autoflush already makes a pending
         # add() visible to the next select, so get-or-create cannot duplicate
@@ -69,6 +81,10 @@ class EntityResolver:
         self._position_cache: dict[str, Position] = {}
         self._competition_cache: dict[str, Competition] = {}
         self._season_cache: dict[str, Season] = {}
+        self._referee_cache: dict[str, Referee] = {}
+        self._stadium_cache: dict[str, Stadium] = {}
+        self._manager_cache: dict[str, Manager] = {}
+        self._competition_stage_cache: dict[str, CompetitionStage] = {}
 
     def _get_or_create_source(self, key: str) -> DataSource:
         source = self.session.exec(
@@ -146,6 +162,96 @@ class EntityResolver:
             self.session.flush()
         self._position_cache[key] = position
         return position
+
+    def resolve_referee(self, external_id: Any, name: str | None) -> Referee | None:
+        """Get-or-create a referee, keyed on the source's id.
+
+        Deferred entity (issue #30): promoted from `soccer_match.referee` free
+        text with the same `(source_id, external_id)` identity as team/position.
+        """
+        key = normalize_external_id(external_id)
+        if key is None:
+            return None
+        referee = self._referee_cache.get(key)
+        if referee is None:
+            referee = self.referees.get_by_external(self.source.id, key)
+        if referee is None:
+            referee = Referee(
+                source_id=self.source.id, external_id=key, name=name or key
+            )
+            self.referees.add(referee)
+            self.session.flush()
+        self._referee_cache[key] = referee
+        return referee
+
+    def resolve_stadium(self, external_id: Any, name: str | None) -> Stadium | None:
+        """Get-or-create a stadium, keyed on the source's id.
+
+        Deferred entity (issue #30): promoted from `soccer_match.stadium` free
+        text with the same `(source_id, external_id)` identity as team/position.
+        """
+        key = normalize_external_id(external_id)
+        if key is None:
+            return None
+        stadium = self._stadium_cache.get(key)
+        if stadium is None:
+            stadium = self.stadiums.get_by_external(self.source.id, key)
+        if stadium is None:
+            stadium = Stadium(
+                source_id=self.source.id, external_id=key, name=name or key
+            )
+            self.stadiums.add(stadium)
+            self.session.flush()
+        self._stadium_cache[key] = stadium
+        return stadium
+
+    def resolve_manager(self, external_id: Any, name: str | None) -> Manager | None:
+        """Get-or-create a manager, keyed on the source's id.
+
+        Shared by both `home_manager_id` and `away_manager_id` — there is no
+        separate home/away manager entity. Deferred entity (issue #30):
+        promoted from `soccer_match.home_manager_name` /
+        `away_manager_name` free text with the same `(source_id, external_id)`
+        identity as team/position.
+        """
+        key = normalize_external_id(external_id)
+        if key is None:
+            return None
+        manager = self._manager_cache.get(key)
+        if manager is None:
+            manager = self.managers.get_by_external(self.source.id, key)
+        if manager is None:
+            manager = Manager(
+                source_id=self.source.id, external_id=key, name=name or key
+            )
+            self.managers.add(manager)
+            self.session.flush()
+        self._manager_cache[key] = manager
+        return manager
+
+    def resolve_competition_stage(
+        self, external_id: Any, name: str | None
+    ) -> CompetitionStage | None:
+        """Get-or-create a competition stage, keyed on the source's id.
+
+        Deferred entity (issue #30): promoted from
+        `soccer_match.competition_stage_name` free text with the same
+        `(source_id, external_id)` identity as team/position.
+        """
+        key = normalize_external_id(external_id)
+        if key is None:
+            return None
+        stage = self._competition_stage_cache.get(key)
+        if stage is None:
+            stage = self.competition_stages.get_by_external(self.source.id, key)
+        if stage is None:
+            stage = CompetitionStage(
+                source_id=self.source.id, external_id=key, name=name or key
+            )
+            self.competition_stages.add(stage)
+            self.session.flush()
+        self._competition_stage_cache[key] = stage
+        return stage
 
     def resolve_competition(
         self,

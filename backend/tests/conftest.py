@@ -12,13 +12,17 @@ from app.core.security import get_password_hash, verify_password
 from app.main import app
 from app.models import User
 from app.models.competition import Competition, CompetitionSeason, Season
+from app.models.competition_stage import CompetitionStage
 from app.models.event import Event
 from app.models.frame360 import Frame360
 from app.models.lineup import Lineup
 from app.models.lineup_position import LineupPosition
+from app.models.manager import Manager
 from app.models.match import SoccerMatch
 from app.models.player import Player
 from app.models.position import Position
+from app.models.referee import Referee
+from app.models.stadium import Stadium
 from app.models.team import Team, TeamAlias
 from app.repositories.user import create_user as _original_create_user
 from tests.utils.user import authentication_token_from_email
@@ -62,6 +66,10 @@ def _wipe_soccer_data(session: Session) -> None:
     session.execute(delete(TeamAlias))
     session.execute(delete(Team))
     session.execute(delete(Position))
+    session.execute(delete(Referee))
+    session.execute(delete(Stadium))
+    session.execute(delete(Manager))
+    session.execute(delete(CompetitionStage))
     session.execute(delete(Player))
     session.execute(delete(Competition))
     session.execute(delete(Season))
