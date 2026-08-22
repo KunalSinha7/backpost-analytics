@@ -46,6 +46,26 @@ class Event(EventBase, table=True):
     substitution_replacement_id: uuid.UUID | None = Field(
         default=None, foreign_key="player.id"
     )
+    # Self-FKs carrying assist attribution, sourced from `raw_event`'s
+    # `shot_key_pass_id` / `pass_assisted_shot_id`. Not indexed: nothing
+    # queries "which shots did this pass key" (the reverse direction) yet, and
+    # the forward lookup is a single-row fetch by this column's own value.
+    #
+    # ondelete="SET NULL" rather than the app's usual unset (= RESTRICT): these
+    # are the first self-referencing FKs on this table, and a plain bulk
+    # `DELETE FROM event` — which the test suite's teardown does — errors on a
+    # self-referencing RESTRICT constraint once any row in the batch is
+    # pointed to by another row in the same batch, since Postgres checks "is
+    # this id still referenced" before the whole statement finishes deleting
+    # its referrers. SET NULL sidesteps that and is also the right read:
+    # "assist attribution unknown" once the source event is gone, not "this
+    # deletion is illegal".
+    key_pass_event_id: uuid.UUID | None = Field(
+        default=None, foreign_key="event.id", ondelete="SET NULL"
+    )
+    assisted_shot_event_id: uuid.UUID | None = Field(
+        default=None, foreign_key="event.id", ondelete="SET NULL"
+    )
 
 
 class EventPublic(EventBase):
@@ -73,6 +93,8 @@ class EventPublic(EventBase):
                     "pass_recipient_id",
                     "position_id",
                     "substitution_replacement_id",
+                    "key_pass_event_id",
+                    "assisted_shot_event_id",
                 }
             ),
             team=names.get(event.team_id, ""),
