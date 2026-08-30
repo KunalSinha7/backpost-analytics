@@ -5,6 +5,7 @@ from sqlmodel import Session
 
 from app.exceptions.event import StatsBombFetchError
 from app.models.event import Event
+from app.repositories.derivation import DerivationRepository
 from app.repositories.event import EventRepository
 from app.repositories.match import MatchRepository
 from app.services.resolver import EntityResolver
@@ -86,6 +87,7 @@ class EventService:
     def __init__(self, session: Session) -> None:
         self.session = session
         self.event_repo = EventRepository(session)
+        self.derivation_repo = DerivationRepository(session)
         self.match_repo = MatchRepository(session)
         self.resolver = EntityResolver(session)
 
@@ -200,6 +202,16 @@ class EventService:
 
             self.event_repo.add_batch(batch)
             self.session.commit()
+
+            # Derive event_relation / formations / freeze frames now that every
+            # event for this match has an id — `related_events` and the assist
+            # self-FKs reference other events in the same match, so this cannot
+            # run until the batch above is committed. Idempotent, and scoped to
+            # the whole match rather than just `batch`, so re-running an ingest
+            # repairs matches that predate this derivation step.
+            self.derivation_repo.derive_for_match(match.id)
+            self.session.commit()
+
             total_imported += len(batch)
             logger.info(
                 "Events ingested: match_id=%s, new=%d", match.statsbomb_id, len(batch)
