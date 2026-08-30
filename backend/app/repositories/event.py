@@ -1,11 +1,35 @@
 import uuid
 from typing import Any
 
+from sqlalchemy import text
 from sqlmodel import Session, col, func, select
 
 from app.models.event import Event
 from app.models.player import Player
 from app.models.team import Team, TeamAlias
+
+# Assist attribution (issue #31): both columns point at another event in the
+# same match, sourced from `raw_event`. Guarded on IS NULL so re-running an
+# ingest fills gaps rather than rewriting rows that are already linked.
+_LINK_KEY_PASS_SQL = """
+    UPDATE event e
+    SET key_pass_event_id = kp.id
+    FROM event kp
+    WHERE e.match_id = :match_id
+      AND e.key_pass_event_id IS NULL
+      AND e.raw_event ->> 'shot_key_pass_id' IS NOT NULL
+      AND kp.statsbomb_id = e.raw_event ->> 'shot_key_pass_id'
+"""
+
+_LINK_ASSISTED_SHOT_SQL = """
+    UPDATE event e
+    SET assisted_shot_event_id = asis.id
+    FROM event asis
+    WHERE e.match_id = :match_id
+      AND e.assisted_shot_event_id IS NULL
+      AND e.raw_event ->> 'pass_assisted_shot_id' IS NOT NULL
+      AND asis.statsbomb_id = e.raw_event ->> 'pass_assisted_shot_id'
+"""
 
 
 class EventRepository:
@@ -105,6 +129,15 @@ class EventRepository:
 
     def get_existing_statsbomb_ids(self) -> set[str]:
         return set(self.session.exec(select(Event.statsbomb_id)).all())
+
+    def link_assist_events_for_match(self, match_id: uuid.UUID) -> None:
+        """Resolve `key_pass_event_id` / `assisted_shot_event_id` for one match.
+
+        Both reference another event in the same match, so every event must be
+        committed before this runs. Idempotent.
+        """
+        self.session.execute(text(_LINK_KEY_PASS_SQL), {"match_id": match_id})
+        self.session.execute(text(_LINK_ASSISTED_SHOT_SQL), {"match_id": match_id})
 
     def add_batch(self, events: list[Event]) -> None:
         self.session.add_all(events)
