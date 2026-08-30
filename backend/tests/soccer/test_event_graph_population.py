@@ -1,8 +1,8 @@
-"""Derivation of the event-graph tables from `event.raw_event`.
+"""Population of the event-graph tables from `event.raw_event`.
 
 Issues #31 and #32 shipped `event_relation`, `match_formation` and
 `shot_freeze_frame` as one-off migration backfills, so a freshly-ingested
-database left all three empty. `DerivationRepository` runs that same
+database left all three empty. Each entity's repository now runs that same
 extraction per match from the ingest path; these tests pin the behaviour the
 migration established, including idempotency, which is what makes re-running
 an ingest a repair rather than a duplication.
@@ -18,7 +18,10 @@ from app.models.event import Event
 from app.models.event_relation import EventRelation
 from app.models.match_formation import MatchFormation, MatchFormationSlot
 from app.models.shot_freeze_frame import ShotFreezeFrame
-from app.repositories.derivation import DerivationRepository
+from app.repositories.event import EventRepository
+from app.repositories.event_relation import EventRelationRepository
+from app.repositories.match_formation import MatchFormationRepository
+from app.repositories.shot_freeze_frame import ShotFreezeFrameRepository
 from tests.utils.soccer import create_competition, create_event, create_match
 
 _ids = itertools.count(32100)
@@ -36,6 +39,14 @@ def match_id(db: Session) -> uuid.UUID:
     comp = create_competition(db, statsbomb_id=n, season_id=n)
     match = create_match(db, comp.id, statsbomb_id=n * 10)
     return match.id
+
+
+def _populate_all(db: Session, match_id: uuid.UUID) -> None:
+    """Run every population step for a match, in the ingest path's order."""
+    EventRepository(db).link_assist_events_for_match(match_id)
+    EventRelationRepository(db).populate_for_match(match_id)
+    MatchFormationRepository(db).populate_for_match(match_id)
+    ShotFreezeFrameRepository(db).populate_for_match(match_id)
 
 
 def _edges_for_match(db: Session, match_id: uuid.UUID) -> int:
@@ -75,7 +86,7 @@ def test_derives_event_relations_from_raw_event(
         raw_event={"related_events": [receipt_sb_id]},
     )
 
-    DerivationRepository(db).derive_for_match(match_id)
+    _populate_all(db, match_id)
     db.commit()
 
     assert (
@@ -100,7 +111,7 @@ def test_ignores_related_events_pointing_outside_the_database(
         raw_event={"related_events": [str(uuid.uuid4())]},
     )
 
-    DerivationRepository(db).derive_for_match(match_id)
+    _populate_all(db, match_id)
     db.commit()
 
     assert _edges_for_match(db, match_id) == 0
@@ -126,7 +137,7 @@ def test_derives_assist_self_fks(db: Session, match_id: uuid.UUID) -> None:
         raw_event={"shot_key_pass_id": key_pass_sb_id},
     )
 
-    DerivationRepository(db).derive_for_match(match_id)
+    _populate_all(db, match_id)
     db.commit()
     db.refresh(shot)
     db.refresh(key_pass)
@@ -151,7 +162,7 @@ def test_derives_formation_and_one_slot_per_lineup_entry(
         raw_event={"tactics": {"formation": 442, "lineup": lineup}},
     )
 
-    DerivationRepository(db).derive_for_match(match_id)
+    _populate_all(db, match_id)
     db.commit()
 
     formation = db.exec(
@@ -169,7 +180,7 @@ def test_ignores_events_without_a_tactics_payload(
     create_event(
         db, match_id, statsbomb_id=str(uuid.uuid4()), type_name="Pass", index=1
     )
-    DerivationRepository(db).derive_for_match(match_id)
+    _populate_all(db, match_id)
     db.commit()
     assert _count(db, MatchFormation, match_id=match_id) == 0
 
@@ -201,7 +212,7 @@ def test_derives_freeze_frames_with_keeper_flag(
         },
     )
 
-    DerivationRepository(db).derive_for_match(match_id)
+    _populate_all(db, match_id)
     db.commit()
 
     frames = db.exec(
@@ -255,8 +266,7 @@ def test_derivation_is_idempotent(db: Session, match_id: uuid.UUID) -> None:
         },
     )
 
-    repo = DerivationRepository(db)
-    repo.derive_for_match(match_id)
+    _populate_all(db, match_id)
     db.commit()
     first = (
         _edges_for_match(db, match_id),
@@ -265,7 +275,7 @@ def test_derivation_is_idempotent(db: Session, match_id: uuid.UUID) -> None:
         _count(db, ShotFreezeFrame),
     )
 
-    repo.derive_for_match(match_id)
+    _populate_all(db, match_id)
     db.commit()
     second = (
         _edges_for_match(db, match_id),

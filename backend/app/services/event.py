@@ -5,9 +5,11 @@ from sqlmodel import Session
 
 from app.exceptions.event import StatsBombFetchError
 from app.models.event import Event
-from app.repositories.derivation import DerivationRepository
 from app.repositories.event import EventRepository
+from app.repositories.event_relation import EventRelationRepository
 from app.repositories.match import MatchRepository
+from app.repositories.match_formation import MatchFormationRepository
+from app.repositories.shot_freeze_frame import ShotFreezeFrameRepository
 from app.services.resolver import EntityResolver
 from app.utils.statsbomb import StatsBombEventRow
 
@@ -87,7 +89,9 @@ class EventService:
     def __init__(self, session: Session) -> None:
         self.session = session
         self.event_repo = EventRepository(session)
-        self.derivation_repo = DerivationRepository(session)
+        self.event_relation_repo = EventRelationRepository(session)
+        self.match_formation_repo = MatchFormationRepository(session)
+        self.shot_freeze_frame_repo = ShotFreezeFrameRepository(session)
         self.match_repo = MatchRepository(session)
         self.resolver = EntityResolver(session)
 
@@ -209,7 +213,10 @@ class EventService:
             # run until the batch above is committed. Idempotent, and scoped to
             # the whole match rather than just `batch`, so re-running an ingest
             # repairs matches that predate this derivation step.
-            self.derivation_repo.derive_for_match(match.id)
+            self.event_repo.link_assist_events_for_match(match.id)
+            self.event_relation_repo.populate_for_match(match.id)
+            self.match_formation_repo.populate_for_match(match.id)
+            self.shot_freeze_frame_repo.populate_for_match(match.id)
             self.session.commit()
 
             total_imported += len(batch)
