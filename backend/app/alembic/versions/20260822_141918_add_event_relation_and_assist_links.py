@@ -61,11 +61,15 @@ UUID *string*, never one of the numeric StatsBomb ids (player_id, team_id,
 plain text equality against `event.statsbomb_id`; nothing is cast to a numeric
 type.
 
-**`raw_event` is `json`, not `jsonb`** (see `add_event_table` /
-`add_data_source_raw_columns...`, where new JSON columns were deliberately
-given `jsonb` and `raw_event` was left as-is). `json_array_elements_text` is
-used throughout rather than the `jsonb_` variant, since there is no implicit
-cast between the two types.
+**Works whether `raw_event` is `json` or `jsonb`.** It is `json` on `master`
+today, but PR #59 (issue #33) converts it to `jsonb`. Rather than depend on
+merge order, the sub-object is cast explicitly — `(raw_event -> 'related_events')::json`
+— which is a no-op when the column is already `json` and a valid explicit cast
+when it is `jsonb` (PostgreSQL has no *implicit* jsonb -> json cast, which is
+why the bare form would fail with `function json_typeof(jsonb) does not exist`).
+Only the small extracted sub-object is cast, not the whole blob, so the cost is
+negligible. The `->>` extractions below need no cast — that operator is defined
+for both types.
 
 **Guarding the array extraction**: `raw_event -> 'related_events'` is SQL NULL
 for the ~3% of events with no related events at all, but a `CASE` still wraps
@@ -96,8 +100,8 @@ depends_on = None
 # Extracted once so the INSERT and the diagnostic COUNT can't drift apart.
 _RELATED_EVENTS_ARRAY = """
     CASE
-        WHEN json_typeof(e.raw_event -> 'related_events') = 'array'
-        THEN e.raw_event -> 'related_events'
+        WHEN json_typeof((e.raw_event -> 'related_events')::json) = 'array'
+        THEN (e.raw_event -> 'related_events')::json
         ELSE '[]'::json
     END
 """
