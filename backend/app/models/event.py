@@ -32,6 +32,9 @@ class Event(EventBase, table=True):
     # would be redundant with this one.
     __table_args__ = (Index("ix_event_match_id_index", "match_id", "index"),)
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # jsonb, not the json this column started as (see the 20260822 migration
+    # for the conversion rationale) — needed for ->> extraction on the backfill
+    # below and for issue #31's jsonb_array_elements_text on related_events.
     raw_event: dict = Field(default_factory=dict, sa_type=JSON)
     # Not index=True: these are the leading columns of composite indexes
     # declared in the migrations, which single-column indexes would duplicate.
@@ -66,6 +69,72 @@ class Event(EventBase, table=True):
     assisted_shot_event_id: uuid.UUID | None = Field(
         default=None, foreign_key="event.id", ondelete="SET NULL"
     )
+
+    # --- Metric/qualifier columns promoted from raw_event (issue #33) -------
+    # Plain columns, deliberately no lookup tables: these are 3-8 distinct
+    # values apiece, and a join on a 376k-row hot path costs more than the
+    # storage saves (same call the plan makes for type_name/play_pattern_name).
+    # Stored but not (yet) exposed on EventPublic/the API — see the PR
+    # description for why, and add them there once field presence is
+    # confirmed against the real dataset.
+
+    # Headline metric: expected goals. 2,536 shots, 100% coverage, mean ~0.115.
+    shot_statsbomb_xg: float | None = None
+    pass_length: float | None = None
+    pass_angle: float | None = None
+
+    # Disciplinary cards.
+    foul_committed_card: str | None = Field(default=None, max_length=50)
+    bad_behaviour_card: str | None = Field(default=None, max_length=50)
+
+    # Qualifiers: low-cardinality outcome/type/technique strings.
+    pass_height: str | None = Field(default=None, max_length=50)
+    pass_body_part: str | None = Field(default=None, max_length=50)
+    pass_outcome: str | None = Field(default=None, max_length=50)
+    pass_type: str | None = Field(default=None, max_length=50)
+    pass_technique: str | None = Field(default=None, max_length=50)
+    shot_outcome: str | None = Field(default=None, max_length=50)
+    shot_body_part: str | None = Field(default=None, max_length=50)
+    shot_technique: str | None = Field(default=None, max_length=50)
+    shot_type: str | None = Field(default=None, max_length=50)
+    duel_type: str | None = Field(default=None, max_length=50)
+    duel_outcome: str | None = Field(default=None, max_length=50)
+    dribble_outcome: str | None = Field(default=None, max_length=50)
+    ball_receipt_outcome: str | None = Field(default=None, max_length=50)
+    interception_outcome: str | None = Field(default=None, max_length=50)
+    goalkeeper_type: str | None = Field(default=None, max_length=50)
+    goalkeeper_outcome: str | None = Field(default=None, max_length=50)
+    goalkeeper_position: str | None = Field(default=None, max_length=50)
+    goalkeeper_technique: str | None = Field(default=None, max_length=50)
+    goalkeeper_body_part: str | None = Field(default=None, max_length=50)
+
+    # Boolean qualifiers.
+    counterpress: bool | None = None
+    pass_cross: bool | None = None
+    pass_switch: bool | None = None
+    pass_through_ball: bool | None = None
+    pass_goal_assist: bool | None = None
+    pass_shot_assist: bool | None = None
+    pass_cut_back: bool | None = None
+    pass_deflected: bool | None = None
+    pass_no_touch: bool | None = None
+    pass_miscommunication: bool | None = None
+    shot_first_time: bool | None = None
+    shot_one_on_one: bool | None = None
+    shot_open_goal: bool | None = None
+    shot_deflected: bool | None = None
+    shot_redirect: bool | None = None
+    shot_saved_off_target: bool | None = None
+    shot_saved_to_post: bool | None = None
+    shot_follows_dribble: bool | None = None
+    dribble_nutmeg: bool | None = None
+    dribble_overrun: bool | None = None
+    dribble_no_touch: bool | None = None
+    foul_committed_advantage: bool | None = None
+    foul_committed_penalty: bool | None = None
+    foul_won_advantage: bool | None = None
+    foul_won_defensive: bool | None = None
+    foul_won_penalty: bool | None = None
 
 
 class EventPublic(EventBase):
