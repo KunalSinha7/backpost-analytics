@@ -36,6 +36,8 @@ from app.models.position import Position  # noqa
 from app.models.referee import Referee  # noqa
 from app.models.stadium import Stadium  # noqa
 from app.models.team import Team, TeamAlias  # noqa
+from app.models.match_formation import MatchFormation, MatchFormationSlot  # noqa
+from app.models.shot_freeze_frame import ShotFreezeFrame  # noqa
 
 target_metadata = SQLModel.metadata
 

@@ -19,9 +19,11 @@ from app.models.lineup import Lineup
 from app.models.lineup_position import LineupPosition
 from app.models.manager import Manager
 from app.models.match import SoccerMatch
+from app.models.match_formation import MatchFormation, MatchFormationSlot
 from app.models.player import Player
 from app.models.position import Position
 from app.models.referee import Referee
+from app.models.shot_freeze_frame import ShotFreezeFrame
 from app.models.stadium import Stadium
 from app.models.team import Team, TeamAlias
 from app.repositories.user import create_user as _original_create_user
@@ -54,6 +56,12 @@ def _assert_disposable_database() -> None:
 def _wipe_soccer_data(session: Session) -> None:
     """Delete all soccer test data respecting FK order: children before parents."""
     _assert_disposable_database()
+    # match_formation_slot/shot_freeze_frame reference event (directly or via
+    # match_formation) and must go first; match_formation itself references
+    # event too, so it also precedes the Event delete below.
+    session.execute(delete(MatchFormationSlot))
+    session.execute(delete(ShotFreezeFrame))
+    session.execute(delete(MatchFormation))
     session.execute(delete(Event))
     session.execute(delete(Frame360))
     session.execute(delete(LineupPosition))

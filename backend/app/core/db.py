@@ -21,9 +21,11 @@ from app.models.lineup import Lineup  # noqa: F401
 from app.models.lineup_position import LineupPosition  # noqa: F401
 from app.models.manager import Manager  # noqa: F401
 from app.models.match import SoccerMatch  # noqa: F401
+from app.models.match_formation import MatchFormation, MatchFormationSlot  # noqa: F401
 from app.models.player import Player  # noqa: F401
 from app.models.position import Position  # noqa: F401
 from app.models.referee import Referee  # noqa: F401
+from app.models.shot_freeze_frame import ShotFreezeFrame  # noqa: F401
 from app.models.stadium import Stadium  # noqa: F401
 from app.models.team import Team, TeamAlias  # noqa: F401
 from app.repositories.user import create_user
