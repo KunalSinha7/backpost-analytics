@@ -74,7 +74,6 @@ function EventMarker({ event, color, mirror }: EventMarkerProps) {
 
   const radius = radiusForType(event.type_name)
   const isShot = event.type_name === "Shot"
-  const isPass = event.type_name === "Pass"
   const rawEndLocation = hasEndLocation(event) ? event : null
   const endPoint = rawEndLocation
     ? resolvePoint(
@@ -83,7 +82,6 @@ function EventMarker({ event, color, mirror }: EventMarkerProps) {
         mirror,
       )
     : null
-  const receiverPoint = isPass && event.pass_recipient ? endPoint : null
 
   return (
     <g>
@@ -150,39 +148,6 @@ function EventMarker({ event, color, mirror }: EventMarkerProps) {
           </div>
         </TooltipContent>
       </Tooltip>
-      {/* Receiver marker: a separate hoverable element (own Tooltip, own
-          small hit target) at the pass's end location — a hollow ring
-          reads as "landing spot" in contrast to the origin's solid dot. */}
-      {receiverPoint && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <g
-              tabIndex={0}
-              aria-label={`Received by ${event.pass_recipient}`}
-              className="cursor-pointer outline-none"
-            >
-              <circle
-                cx={receiverPoint[0]}
-                cy={receiverPoint[1]}
-                r={0.9}
-                fill="var(--background)"
-                fillOpacity={0.4}
-                stroke={color}
-                strokeWidth={0.5}
-                vectorEffect="non-scaling-stroke"
-              />
-            </g>
-          </TooltipTrigger>
-          <TooltipContent>
-            <div className="flex flex-col gap-0.5">
-              <span className="font-medium">{event.pass_recipient}</span>
-              <span className="text-muted-foreground">
-                Received pass · {formatMinute(event)}
-              </span>
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      )}
     </g>
   )
 }
