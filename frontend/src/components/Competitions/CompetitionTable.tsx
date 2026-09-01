@@ -5,6 +5,7 @@ import { useState } from "react"
 import type { CompetitionPublic } from "@/client"
 import { SoccerService } from "@/client"
 import { DataTable } from "@/components/Common/DataTable"
+import { EventDataBadge } from "@/components/Common/EventDataBadge"
 import {
   Select,
   SelectContent,
@@ -48,24 +49,41 @@ export function CompetitionTable() {
       header: "Competition",
       cell: ({ row }) => {
         const hasMatches = (row.original.match_count ?? 0) > 0
+        const badge = (
+          <EventDataBadge
+            hasEvents={row.original.has_events ?? false}
+            coverage={{
+              withEvents: row.original.event_match_count ?? 0,
+              total: row.original.match_count ?? 0,
+            }}
+          />
+        )
         if (!hasMatches) {
           return (
-            <span className="font-medium">{row.original.competition_name}</span>
+            <span className="flex items-center gap-2">
+              <span className="font-medium">
+                {row.original.competition_name}
+              </span>
+              {badge}
+            </span>
           )
         }
         return (
-          <button
-            type="button"
-            onClick={() =>
-              navigate({
-                to: "/soccer/matches",
-                search: { competitionSeasonId: row.original.id },
-              })
-            }
-            className="font-medium text-left hover:underline hover:text-primary cursor-pointer"
-          >
-            {row.original.competition_name}
-          </button>
+          <span className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                navigate({
+                  to: "/soccer/matches",
+                  search: { competitionSeasonId: row.original.id },
+                })
+              }
+              className="font-medium text-left hover:underline hover:text-primary cursor-pointer"
+            >
+              {row.original.competition_name}
+            </button>
+            {badge}
+          </span>
         )
       },
     },

@@ -7,6 +7,8 @@
       "competition_name": "Snapshot Alpha League",
       "competition_youth": false,
       "country_name": "Snapshotland",
+      "event_match_count": 1,
+      "has_events": true,
       "id": "<uuid:1>",
       "match_available": "2099-01-02T03:04:05.000000",
       "match_available_360": "2099-01-02T03:04:05.000000",

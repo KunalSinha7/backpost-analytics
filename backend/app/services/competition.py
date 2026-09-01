@@ -21,7 +21,7 @@ class CompetitionService:
         limit: int = 100,
         has_matches: bool = False,
         has_events: bool = False,
-    ) -> tuple[list[tuple[CompetitionSeason, Competition, Season, int]], int]:
+    ) -> tuple[list[tuple[CompetitionSeason, Competition, Season, int, int]], int]:
         return self.repo.list_all(
             skip=skip, limit=limit, has_matches=has_matches, has_events=has_events
         )
