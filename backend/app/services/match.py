@@ -3,7 +3,7 @@ import uuid
 
 from sqlmodel import Session
 
-from app.models.competition import CompetitionSeason
+from app.models.competition import IngestedEdition
 from app.models.match import SoccerMatch
 from app.repositories.match import MatchRepository
 from app.services.resolver import EntityResolver
@@ -45,23 +45,23 @@ class MatchService:
             competition_season_id=competition_season_id, has_events=has_events
         )
 
-    def ingest(self, competitions: list[CompetitionSeason]) -> int:
+    def ingest(self, competitions: list[IngestedEdition]) -> int:
         from statsbombpy import sb  # type: ignore[import-untyped]
 
         existing = self.repo.get_existing_statsbomb_ids()
         imported = 0
 
-        for competition in competitions:
+        for edition, competition_statsbomb_id, season_statsbomb_id in competitions:
             try:
                 matches_df = sb.matches(
-                    competition_id=competition.statsbomb_id,
-                    season_id=competition.season_id,
+                    competition_id=competition_statsbomb_id,
+                    season_id=season_statsbomb_id,
                 )
             except Exception:
                 logger.warning(
                     "Could not fetch matches: competition_id=%s season_id=%s",
-                    competition.statsbomb_id,
-                    competition.season_id,
+                    competition_statsbomb_id,
+                    season_statsbomb_id,
                 )
                 continue
 
@@ -125,7 +125,7 @@ class MatchService:
                     competition_stage_id=(
                         competition_stage.id if competition_stage else None
                     ),
-                    competition_season_id=competition.id,
+                    competition_season_id=edition.id,
                     match_date=match_row.match_date[:20],
                     kick_off=match_row.kick_off[:20] if match_row.kick_off else None,
                     home_score=match_row.home_score,
@@ -156,7 +156,7 @@ class MatchService:
         logger.info("Match ingest: %d new", imported)
         return imported
 
-    def backfill_raw(self, competitions: list[CompetitionSeason]) -> int:
+    def backfill_raw(self, competitions: list[IngestedEdition]) -> int:
         """Populate `raw` on matches ingested before that column existed.
 
         `ingest` only inserts — it skips match ids it already has — so it will
@@ -166,11 +166,11 @@ class MatchService:
         from statsbombpy import sb  # type: ignore[import-untyped]
 
         updated = 0
-        for competition in competitions:
+        for _edition, competition_statsbomb_id, season_statsbomb_id in competitions:
             existing = {
                 m.statsbomb_id: m
                 for m in self.repo.list_for_competition(
-                    competition.statsbomb_id, competition.season_id
+                    competition_statsbomb_id, season_statsbomb_id
                 )
             }
             if not existing or all(m.raw is not None for m in existing.values()):
@@ -178,15 +178,15 @@ class MatchService:
 
             try:
                 matches_df = sb.matches(
-                    competition_id=competition.statsbomb_id,
-                    season_id=competition.season_id,
+                    competition_id=competition_statsbomb_id,
+                    season_id=season_statsbomb_id,
                 )
             except Exception:
                 logger.warning(
                     "Could not fetch matches for raw backfill: "
                     "competition_id=%s season_id=%s",
-                    competition.statsbomb_id,
-                    competition.season_id,
+                    competition_statsbomb_id,
+                    season_statsbomb_id,
                 )
                 continue
 
@@ -204,7 +204,7 @@ class MatchService:
         logger.info("Match raw backfill: %d rows populated", updated)
         return updated
 
-    def backfill_deferred_entities(self, competitions: list[CompetitionSeason]) -> int:
+    def backfill_deferred_entities(self, competitions: list[IngestedEdition]) -> int:
         """Backfill referee/stadium/manager/competition_stage FKs via re-fetch.
 
         These five FKs (issue #30) did not exist when older rows were
@@ -231,11 +231,11 @@ class MatchService:
             "competition_stage_id",
         )
         updated = 0
-        for competition in competitions:
+        for _edition, competition_statsbomb_id, season_statsbomb_id in competitions:
             existing = {
                 m.statsbomb_id: m
                 for m in self.repo.list_for_competition(
-                    competition.statsbomb_id, competition.season_id
+                    competition_statsbomb_id, season_statsbomb_id
                 )
             }
             if not existing or all(
@@ -246,15 +246,15 @@ class MatchService:
 
             try:
                 matches_df = sb.matches(
-                    competition_id=competition.statsbomb_id,
-                    season_id=competition.season_id,
+                    competition_id=competition_statsbomb_id,
+                    season_id=season_statsbomb_id,
                 )
             except Exception:
                 logger.warning(
                     "Could not fetch matches for deferred-entity backfill: "
                     "competition_id=%s season_id=%s",
-                    competition.statsbomb_id,
-                    competition.season_id,
+                    competition_statsbomb_id,
+                    season_statsbomb_id,
                 )
                 continue
 

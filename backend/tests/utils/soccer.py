@@ -10,7 +10,7 @@ from hashlib import blake2b
 
 from sqlmodel import Session, select
 
-from app.models.competition import CompetitionSeason
+from app.models.competition import CompetitionSeason, IngestedEdition
 from app.models.event import Event
 from app.models.frame360 import Frame360
 from app.models.lineup import Lineup
@@ -68,6 +68,17 @@ def create_player(db: Session, name: str, statsbomb_id: int | None = None) -> Pl
     return player
 
 
+def create_ingested_edition(db: Session, **kwargs: object) -> IngestedEdition:
+    """`create_competition`, paired with the source ids ingest needs.
+
+    Match ingest calls StatsBomb with the competition/season ids, which the
+    edition row no longer carries, so they travel beside it.
+    """
+    statsbomb_id = int(kwargs.get("statsbomb_id", 999))  # type: ignore[arg-type]
+    season_id = int(kwargs.get("season_id", 999))  # type: ignore[arg-type]
+    return IngestedEdition(create_competition(db, **kwargs), statsbomb_id, season_id)
+
+
 def create_competition(db: Session, **kwargs: object) -> CompetitionSeason:
     """A `CompetitionSeason` plus the competition and season it points at.
 
@@ -87,11 +98,12 @@ def create_competition(db: Session, **kwargs: object) -> CompetitionSeason:
     season = resolver.resolve_season(season_id, str(kwargs.get("season_name", "2099")))
     assert competition is not None and season is not None
 
+    # The `statsbomb_id`/`season_id` kwargs above still steer the source ids —
+    # they reach the row through the resolved competition/season `external_id`,
+    # not through columns on the edition itself.
     comp = CompetitionSeason(
-        statsbomb_id=statsbomb_id,
-        season_id=season_id,
         competition_id=competition.id,
-        season_ref_id=season.id,
+        season_id=season.id,
     )
     db.add(comp)
     db.commit()

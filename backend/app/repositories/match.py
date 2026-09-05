@@ -149,7 +149,7 @@ class MatchRepository:
         comp = self.session.exec(
             select(CompetitionSeason)
             .join(Competition, col(CompetitionSeason.competition_id) == Competition.id)
-            .join(Season, col(CompetitionSeason.season_ref_id) == Season.id)
+            .join(Season, col(CompetitionSeason.season_id) == Season.id)
             .where(
                 Competition.external_id == str(competition_statsbomb_id),
                 Season.external_id == str(season_id),
