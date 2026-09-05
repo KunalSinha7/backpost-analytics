@@ -94,6 +94,14 @@ export type CompetitionPublic = {
      * Match Count
      */
     match_count?: number;
+    /**
+     * Event Match Count
+     */
+    event_match_count?: number;
+    /**
+     * Has Events
+     */
+    has_events?: boolean;
 };
 
 /**

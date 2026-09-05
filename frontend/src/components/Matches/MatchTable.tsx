@@ -6,6 +6,7 @@ import { useState } from "react"
 import type { SoccerMatchPublic } from "@/client"
 import { SoccerService } from "@/client"
 import { DataTable } from "@/components/Common/DataTable"
+import { EventDataBadge } from "@/components/Common/EventDataBadge"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -88,10 +89,16 @@ export function MatchTable({ initialCompetitionSeasonId }: MatchTableProps) {
       id: "fixture",
       header: "Fixture",
       cell: ({ row }) => (
-        <span className="font-medium">
-          {row.original.home_team}{" "}
-          <span className="text-muted-foreground font-normal">vs</span>{" "}
-          {row.original.away_team}
+        // The badge doubles as the affordance for row clicks: onRowClick only
+        // navigates to the visualizer when the match has events, so an
+        // unbadged row is deliberately inert rather than broken.
+        <span className="flex items-center gap-2">
+          <span className="font-medium">
+            {row.original.home_team}{" "}
+            <span className="text-muted-foreground font-normal">vs</span>{" "}
+            {row.original.away_team}
+          </span>
+          <EventDataBadge hasEvents={row.original.has_events ?? false} />
         </span>
       ),
     },

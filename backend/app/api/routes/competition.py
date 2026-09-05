@@ -35,9 +35,13 @@ def read_competitions(
     return CompetitionsPublic(
         data=[
             CompetitionPublic.from_row(
-                edition, competition, season, match_count=match_count
+                edition,
+                competition,
+                season,
+                match_count=match_count,
+                event_match_count=event_match_count,
             )
-            for edition, competition, season, match_count in rows
+            for edition, competition, season, match_count, event_match_count in rows
         ],
         count=count,
     )

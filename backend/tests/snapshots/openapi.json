@@ -87,6 +87,16 @@
             "title": "Country Name",
             "type": "string"
           },
+          "event_match_count": {
+            "default": 0,
+            "title": "Event Match Count",
+            "type": "integer"
+          },
+          "has_events": {
+            "default": false,
+            "title": "Has Events",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",

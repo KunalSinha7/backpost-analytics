@@ -76,6 +76,61 @@ def test_competition_list_all_has_events_filter(db: Session) -> None:
     assert count == len(rows)
 
 
+def test_competition_list_all_reports_event_match_coverage(db: Session) -> None:
+    """`event_match_count` counts matches with events, not events."""
+    comp = create_competition(db, statsbomb_id=1009, season_id=1009)
+    covered = create_match(db, comp.id, statsbomb_id=10091)
+    create_match(db, comp.id, statsbomb_id=10092)  # no events
+    # Two events on one match must still count that match exactly once,
+    # otherwise the "N of M matches" label overstates coverage.
+    create_event(db, covered.id)
+    create_event(db, covered.id)
+
+    rows, _ = CompetitionRepository(db).list_all()
+    row = next(r for r in rows if r[0].id == comp.id)
+    _, _, _, match_count, event_match_count = row
+
+    assert match_count == 2
+    assert event_match_count == 1
+
+
+def test_competition_list_all_match_count_not_inflated_by_events(
+    db: Session,
+) -> None:
+    """The events join must not fan out and inflate `match_count`.
+
+    Guards the aggregate: joining Event directly instead of a DISTINCT
+    match_id subquery would multiply each match row by its event count.
+    """
+    comp = create_competition(db, statsbomb_id=1010, season_id=1010)
+    match = create_match(db, comp.id, statsbomb_id=10101)
+    for _ in range(5):
+        create_event(db, match.id)
+
+    rows, _ = CompetitionRepository(db).list_all()
+    _, _, _, match_count, event_match_count = next(
+        r for r in rows if r[0].id == comp.id
+    )
+
+    assert match_count == 1
+    assert event_match_count == 1
+
+
+def test_competition_list_all_event_match_count_zero_without_events(
+    db: Session,
+) -> None:
+    comp = create_competition(db, statsbomb_id=1011, season_id=1011)
+    create_match(db, comp.id, statsbomb_id=10111)
+
+    rows, _ = CompetitionRepository(db).list_all()
+    _, _, _, match_count, event_match_count = next(
+        r for r in rows if r[0].id == comp.id
+    )
+
+    assert match_count == 1
+    assert event_match_count == 0
+
+
 def test_competition_list_all_has_events_false_includes_matches_only(
     db: Session,
 ) -> None:

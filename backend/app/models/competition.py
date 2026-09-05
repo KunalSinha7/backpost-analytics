@@ -79,6 +79,11 @@ class CompetitionPublic(CompetitionSeasonBase):
     competition_international: bool = False
     season_name: str = Field(max_length=100)
     match_count: int = 0
+    # Number of this edition's matches that have at least one ingested event.
+    # `has_events` is derived from it in `from_row` rather than queried
+    # separately, so the flag and the count can never disagree.
+    event_match_count: int = 0
+    has_events: bool = False
 
     @classmethod
     def from_row(
@@ -88,6 +93,7 @@ class CompetitionPublic(CompetitionSeasonBase):
         season: "Season",
         *,
         match_count: int = 0,
+        event_match_count: int = 0,
     ) -> "CompetitionPublic":
         return cls(
             **edition.model_dump(exclude={"raw"}),
@@ -98,6 +104,8 @@ class CompetitionPublic(CompetitionSeasonBase):
             competition_international=competition.is_international,
             season_name=season.name,
             match_count=match_count,
+            event_match_count=event_match_count,
+            has_events=event_match_count > 0,
         )
 
 
