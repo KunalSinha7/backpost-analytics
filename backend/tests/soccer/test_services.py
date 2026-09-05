@@ -12,12 +12,17 @@ from app.models.match import SoccerMatch
 from app.models.player import Player
 from app.models.referee import Referee
 from app.models.stadium import Stadium
+from app.repositories.competition import CompetitionRepository
 from app.services.competition import CompetitionService
 from app.services.event import EventService
 from app.services.frame360 import Frame360Service
 from app.services.lineup import LineupService
 from app.services.match import MatchService
-from tests.utils.soccer import create_competition, create_match
+from tests.utils.soccer import (
+    create_competition,
+    create_ingested_edition,
+    create_match,
+)
 
 
 def _competitions_df(competition_id: int, season_id: int) -> pd.DataFrame:
@@ -159,7 +164,10 @@ def test_competition_service_ingest_new(db: Session) -> None:
     ):
         n, comps = CompetitionService(db).ingest()
     assert n >= 1
-    assert any(c.statsbomb_id == 6001 for c in comps)
+    assert len(comps) >= 1
+    # The ingested edition is addressable by the source ids it was built from,
+    # which now resolve through competition/season rather than its own columns.
+    assert (6001, 6001) in CompetitionRepository(db).get_existing_keys()
 
 
 def test_competition_service_ingest_idempotent(db: Session) -> None:
@@ -178,21 +186,21 @@ def test_competition_service_ingest_idempotent(db: Session) -> None:
 
 
 def test_match_service_ingest(db: Session) -> None:
-    comp = create_competition(db, statsbomb_id=6003, season_id=6003)
+    comp = create_ingested_edition(db, statsbomb_id=6003, season_id=6003)
     with patch("statsbombpy.sb.matches", return_value=_matches_df(60001)):
         n = MatchService(db).ingest([comp])
     assert n >= 1
 
 
 def test_match_service_ingest_skips_fetch_error(db: Session) -> None:
-    comp = create_competition(db, statsbomb_id=6004, season_id=6004)
+    comp = create_ingested_edition(db, statsbomb_id=6004, season_id=6004)
     with patch("statsbombpy.sb.matches", side_effect=Exception("network error")):
         n = MatchService(db).ingest([comp])
     assert n == 0
 
 
 def test_match_service_ingest_idempotent(db: Session) -> None:
-    comp = create_competition(db, statsbomb_id=6005, season_id=6005)
+    comp = create_ingested_edition(db, statsbomb_id=6005, season_id=6005)
     with patch("statsbombpy.sb.matches", return_value=_matches_df(60002)):
         n1 = MatchService(db).ingest([comp])
     with patch("statsbombpy.sb.matches", return_value=_matches_df(60002)):
@@ -229,7 +237,7 @@ def _strip_raw(db: Session, statsbomb_id: int) -> SoccerMatch:
 
 
 def test_match_service_backfill_raw_populates_existing_rows(db: Session) -> None:
-    comp = create_competition(db, statsbomb_id=6019, season_id=6019)
+    comp = create_ingested_edition(db, statsbomb_id=6019, season_id=6019)
     with patch("statsbombpy.sb.matches", return_value=_matches_df_with_ids(60016)):
         MatchService(db).ingest([comp])
     db.commit()
@@ -249,7 +257,7 @@ def test_match_service_backfill_raw_populates_existing_rows(db: Session) -> None
 
 
 def test_match_service_backfill_raw_is_idempotent(db: Session) -> None:
-    comp = create_competition(db, statsbomb_id=6020, season_id=6020)
+    comp = create_ingested_edition(db, statsbomb_id=6020, season_id=6020)
     with patch("statsbombpy.sb.matches", return_value=_matches_df_with_ids(60017)):
         MatchService(db).ingest([comp])
     db.commit()
@@ -266,7 +274,7 @@ def test_match_service_backfill_raw_is_idempotent(db: Session) -> None:
 
 
 def test_match_service_backfill_raw_survives_fetch_error(db: Session) -> None:
-    comp = create_competition(db, statsbomb_id=6021, season_id=6021)
+    comp = create_ingested_edition(db, statsbomb_id=6021, season_id=6021)
     with patch("statsbombpy.sb.matches", return_value=_matches_df_with_ids(60018)):
         MatchService(db).ingest([comp])
     db.commit()
@@ -303,7 +311,7 @@ def _matches_df_with_deferred_entities(match_id: int) -> pd.DataFrame:
 
 
 def test_match_service_ingest_resolves_deferred_entities(db: Session) -> None:
-    comp = create_competition(db, statsbomb_id=6022, season_id=6022)
+    comp = create_ingested_edition(db, statsbomb_id=6022, season_id=6022)
     with patch(
         "statsbombpy.sb.matches", return_value=_matches_df_with_deferred_entities(60019)
     ):
@@ -329,7 +337,7 @@ def test_match_service_ingest_leaves_deferred_entities_null_when_absent(
     db: Session,
 ) -> None:
     """`_matches_df` carries no referee/stadium/manager ids — only names."""
-    comp = create_competition(db, statsbomb_id=6023, season_id=6023)
+    comp = create_ingested_edition(db, statsbomb_id=6023, season_id=6023)
     with patch("statsbombpy.sb.matches", return_value=_matches_df(60020)):
         MatchService(db).ingest([comp])
 
@@ -344,7 +352,7 @@ def test_match_service_ingest_leaves_deferred_entities_null_when_absent(
 def test_match_service_backfill_deferred_entities_populates_existing_rows(
     db: Session,
 ) -> None:
-    comp = create_competition(db, statsbomb_id=6024, season_id=6024)
+    comp = create_ingested_edition(db, statsbomb_id=6024, season_id=6024)
     with patch("statsbombpy.sb.matches", return_value=_matches_df(60021)):
         MatchService(db).ingest([comp])
     db.commit()
@@ -366,7 +374,7 @@ def test_match_service_backfill_deferred_entities_populates_existing_rows(
 
 
 def test_match_service_backfill_deferred_entities_is_idempotent(db: Session) -> None:
-    comp = create_competition(db, statsbomb_id=6025, season_id=6025)
+    comp = create_ingested_edition(db, statsbomb_id=6025, season_id=6025)
     with patch("statsbombpy.sb.matches", return_value=_matches_df(60022)):
         MatchService(db).ingest([comp])
     db.commit()
@@ -386,7 +394,7 @@ def test_match_service_backfill_deferred_entities_is_idempotent(db: Session) -> 
 def test_match_service_backfill_deferred_entities_survives_fetch_error(
     db: Session,
 ) -> None:
-    comp = create_competition(db, statsbomb_id=6026, season_id=6026)
+    comp = create_ingested_edition(db, statsbomb_id=6026, season_id=6026)
     with patch("statsbombpy.sb.matches", return_value=_matches_df(60023)):
         MatchService(db).ingest([comp])
     db.commit()

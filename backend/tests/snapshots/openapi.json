@@ -155,23 +155,13 @@
             ],
             "title": "Match Updated 360"
           },
-          "season_id": {
-            "title": "Season Id",
-            "type": "integer"
-          },
           "season_name": {
             "maxLength": 100,
             "title": "Season Name",
             "type": "string"
-          },
-          "statsbomb_id": {
-            "title": "Statsbomb Id",
-            "type": "integer"
           }
         },
         "required": [
-          "statsbomb_id",
-          "season_id",
           "id",
           "country_name",
           "competition_name",

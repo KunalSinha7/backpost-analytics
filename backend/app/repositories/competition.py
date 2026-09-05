@@ -75,7 +75,7 @@ class CompetitionRepository:
                 ),
             )
             .join(Competition, col(CompetitionSeason.competition_id) == Competition.id)
-            .join(Season, col(CompetitionSeason.season_ref_id) == Season.id)
+            .join(Season, col(CompetitionSeason.season_id) == Season.id)
             .outerjoin(
                 SoccerMatch,
                 col(SoccerMatch.competition_season_id) == col(CompetitionSeason.id),
@@ -104,18 +104,35 @@ class CompetitionRepository:
         ], count
 
     def get_existing_keys(self) -> set[tuple[int, int]]:
-        return {
-            (c.statsbomb_id, c.season_id)
-            for c in self.session.exec(select(CompetitionSeason)).all()
-        }
+        """Source-side (competition, season) ids of every edition already stored.
+
+        The pair used to be duplicated onto `competition_season` as two
+        integer columns; it now comes from the rows that own it, so there is
+        one place a StatsBomb id can be wrong.
+        """
+        rows = self.session.execute(
+            sa_select(col(Competition.external_id), col(Season.external_id))
+            .select_from(CompetitionSeason)
+            .join(Competition, col(CompetitionSeason.competition_id) == Competition.id)
+            .join(Season, col(CompetitionSeason.season_id) == Season.id)
+        ).all()
+        return {(int(comp_ext), int(season_ext)) for comp_ext, season_ext in rows}
 
     def get_by_statsbomb_key(
         self, statsbomb_id: int, season_id: int
     ) -> CompetitionSeason:
+        """Look up an edition by the source's own ids.
+
+        `external_id` is a string on both sides, so the integers are cast
+        rather than compared across types.
+        """
         row = self.session.exec(
-            select(CompetitionSeason).where(
-                CompetitionSeason.statsbomb_id == statsbomb_id,
-                CompetitionSeason.season_id == season_id,
+            select(CompetitionSeason)
+            .join(Competition, col(CompetitionSeason.competition_id) == Competition.id)
+            .join(Season, col(CompetitionSeason.season_id) == Season.id)
+            .where(
+                Competition.external_id == str(statsbomb_id),
+                Season.external_id == str(season_id),
             )
         ).first()
         if row is None:
