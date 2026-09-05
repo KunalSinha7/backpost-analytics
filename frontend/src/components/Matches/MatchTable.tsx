@@ -7,6 +7,7 @@ import type { SoccerMatchPublic } from "@/client"
 import { SoccerService } from "@/client"
 import { DataTable } from "@/components/Common/DataTable"
 import { EventDataBadge } from "@/components/Common/EventDataBadge"
+import { EventsOnlyFilter } from "@/components/Common/EventsOnlyFilter"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -28,6 +29,7 @@ export function MatchTable({ initialCompetitionSeasonId }: MatchTableProps) {
   )
   const [teamSearch, setTeamSearch] = useState("")
   const [committedTeamSearch, setCommittedTeamSearch] = useState("")
+  const [eventsOnly, setEventsOnly] = useState(false)
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useTablePageSize()
 
@@ -41,6 +43,7 @@ export function MatchTable({ initialCompetitionSeasonId }: MatchTableProps) {
       "matches",
       competitionFilter,
       committedTeamSearch,
+      eventsOnly,
       page,
       pageSize,
     ],
@@ -51,6 +54,10 @@ export function MatchTable({ initialCompetitionSeasonId }: MatchTableProps) {
         competitionSeasonId:
           competitionFilter === "all" ? undefined : competitionFilter,
         teamName: committedTeamSearch || undefined,
+        // Sent to the server rather than filtered client-side: this table is
+        // paginated server-side, so a client filter would drop rows out of an
+        // already-paged slice and leave `data.count` overstating the total.
+        hasEvents: eventsOnly || undefined,
       }),
   })
 
@@ -185,6 +192,14 @@ export function MatchTable({ initialCompetitionSeasonId }: MatchTableProps) {
             <Search className="h-4 w-4" />
           </button>
         </div>
+        <EventsOnlyFilter
+          id="matches-events-only"
+          checked={eventsOnly}
+          onCheckedChange={(v) => {
+            setEventsOnly(v)
+            setPage(0)
+          }}
+        />
         <span className="text-sm text-muted-foreground ml-auto">
           {data.count} matches
         </span>
