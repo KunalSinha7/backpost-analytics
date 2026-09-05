@@ -158,7 +158,13 @@ export function MatchTable({ initialCompetitionSeasonId }: MatchTableProps) {
             <SelectItem value="all">All competitions</SelectItem>
             {sortedComps.map((comp) => (
               <SelectItem key={comp.id} value={comp.id}>
-                {comp.competition_name} — {comp.season_name}
+                {/* This dropdown is filtered to hasMatches, not hasEvents, so
+                    it holds a mix — the badge is what distinguishes the
+                    editions worth filtering to. */}
+                <span className="flex items-center gap-2">
+                  {comp.competition_name} — {comp.season_name}
+                  <EventDataBadge hasEvents={comp.has_events ?? false} />
+                </span>
               </SelectItem>
             ))}
           </SelectContent>
