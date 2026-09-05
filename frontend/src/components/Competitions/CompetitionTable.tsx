@@ -6,6 +6,7 @@ import type { CompetitionPublic } from "@/client"
 import { SoccerService } from "@/client"
 import { DataTable } from "@/components/Common/DataTable"
 import { EventDataBadge } from "@/components/Common/EventDataBadge"
+import { EventsOnlyFilter } from "@/components/Common/EventsOnlyFilter"
 import {
   Select,
   SelectContent,
@@ -24,6 +25,7 @@ export function CompetitionTable() {
   const navigate = useNavigate()
   const [countryFilter, setCountryFilter] = useState("all")
   const [genderFilter, setGenderFilter] = useState("all")
+  const [eventsOnly, setEventsOnly] = useState(false)
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useTablePageSize()
 
@@ -36,10 +38,14 @@ export function CompetitionTable() {
     ...new Set(withMatches.map((c) => c.competition_gender)),
   ].sort()
 
+  // Filtered in the client rather than refetching with `hasEvents`: the whole
+  // catalog is already loaded above, so the toggle is instant and the country
+  // and gender options stay stable instead of collapsing to the filtered set.
   const filtered = data.data.filter(
     (c) =>
       (countryFilter === "all" || c.country_name === countryFilter) &&
-      (genderFilter === "all" || c.competition_gender === genderFilter),
+      (genderFilter === "all" || c.competition_gender === genderFilter) &&
+      (!eventsOnly || c.has_events),
   )
   const pageData = filtered.slice(page * pageSize, (page + 1) * pageSize)
 
@@ -149,6 +155,14 @@ export function CompetitionTable() {
             ))}
           </SelectContent>
         </Select>
+        <EventsOnlyFilter
+          id="competitions-events-only"
+          checked={eventsOnly}
+          onCheckedChange={(v) => {
+            setEventsOnly(v)
+            setPage(0)
+          }}
+        />
       </div>
       {filtered.length === 0 && data.count > 0 ? (
         <p className="text-sm text-muted-foreground">
