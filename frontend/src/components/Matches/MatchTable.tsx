@@ -5,7 +5,10 @@ import { Search } from "lucide-react"
 import { useState } from "react"
 import type { SoccerMatchPublic } from "@/client"
 import { SoccerService } from "@/client"
-import { DataTable } from "@/components/Common/DataTable"
+import {
+  DataTable,
+  type DataTableFeatures,
+} from "@/components/Common/DataTable"
 import { EventDataBadge } from "@/components/Common/EventDataBadge"
 import { EventsOnlyFilter } from "@/components/Common/EventsOnlyFilter"
 import { Input } from "@/components/ui/input"
@@ -72,7 +75,7 @@ export function MatchTable({ initialCompetitionSeasonId }: MatchTableProps) {
     a.competition_name.localeCompare(b.competition_name),
   )
 
-  const columns: ColumnDef<SoccerMatchPublic>[] = [
+  const columns: ColumnDef<DataTableFeatures, SoccerMatchPublic>[] = [
     {
       accessorKey: "match_week",
       header: "Wk",

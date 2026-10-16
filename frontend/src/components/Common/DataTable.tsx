@@ -1,11 +1,17 @@
 import {
   type ColumnDef,
+  createPaginatedRowModel,
+  createSortedRowModel,
   flexRender,
-  getCoreRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
+  type RowData,
+  rowPaginationFeature,
+  rowSortingFeature,
   type SortingState,
-  useReactTable,
+  sortFn_alphanumeric,
+  sortFn_datetime,
+  sortFn_text,
+  tableFeatures,
+  useTable,
 } from "@tanstack/react-table"
 import {
   ArrowDown,
@@ -43,8 +49,24 @@ interface ServerPaginationProps {
   onPageSizeChange: (size: number) => void
 }
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[]
+// v9 only registers what we list; these sortFns are the ones the default
+// `sortFn: "auto"` resolves to, matching v8's bundled behavior.
+const dataTableFeatures = tableFeatures({
+  rowPaginationFeature,
+  rowSortingFeature,
+  paginatedRowModel: createPaginatedRowModel(),
+  sortedRowModel: createSortedRowModel(),
+  sortFns: {
+    alphanumeric: sortFn_alphanumeric,
+    datetime: sortFn_datetime,
+    text: sortFn_text,
+  },
+})
+
+export type DataTableFeatures = typeof dataTableFeatures
+
+interface DataTableProps<TData extends RowData> {
+  columns: ColumnDef<DataTableFeatures, TData>[]
   data: TData[]
   pageSize?: number
   enableSorting?: boolean
@@ -52,22 +74,20 @@ interface DataTableProps<TData, TValue> {
   onRowClick?: (row: TData) => void
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends RowData>({
   columns,
   data,
   pageSize,
   enableSorting = true,
   serverPagination,
   onRowClick,
-}: DataTableProps<TData, TValue>) {
+}: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([])
 
-  const table = useReactTable({
+  const table = useTable({
+    features: dataTableFeatures,
     data,
     columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
     enableSorting,
     ...(serverPagination
@@ -86,7 +106,9 @@ export function DataTable<TData, TValue>({
         }
       : {
           state: { sorting },
-          initialState: { pagination: { pageSize: pageSize ?? 10 } },
+          initialState: {
+            pagination: { pageIndex: 0, pageSize: pageSize ?? 10 },
+          },
         }),
   })
 
@@ -99,17 +121,15 @@ export function DataTable<TData, TValue>({
 
   const startEntry = serverPagination
     ? serverPagination.page * serverPagination.pageSize + 1
-    : table.getState().pagination.pageIndex *
-        table.getState().pagination.pageSize +
-      1
+    : table.state.pagination.pageIndex * table.state.pagination.pageSize + 1
   const endEntry = serverPagination
     ? Math.min(
         (serverPagination.page + 1) * serverPagination.pageSize,
         serverPagination.totalCount,
       )
     : Math.min(
-        (table.getState().pagination.pageIndex + 1) *
-          table.getState().pagination.pageSize,
+        (table.state.pagination.pageIndex + 1) *
+          table.state.pagination.pageSize,
         data.length,
       )
   const totalEntries = serverPagination
@@ -117,11 +137,11 @@ export function DataTable<TData, TValue>({
     : data.length
   const currentPage = serverPagination
     ? serverPagination.page + 1
-    : table.getState().pagination.pageIndex + 1
+    : table.state.pagination.pageIndex + 1
   const totalPages = serverPagination ? serverPageCount : table.getPageCount()
   const currentPageSize = serverPagination
     ? serverPagination.pageSize
-    : table.getState().pagination.pageSize
+    : table.state.pagination.pageSize
 
   const canPreviousPage = serverPagination
     ? serverPagination.page > 0
@@ -216,7 +236,7 @@ export function DataTable<TData, TValue>({
                 }
                 className={onRowClick ? "cursor-pointer" : undefined}
               >
-                {row.getVisibleCells().map((cell) => (
+                {row.getAllCells().map((cell) => (
                   <TableCell key={cell.id}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>

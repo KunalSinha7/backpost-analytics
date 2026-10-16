@@ -3,10 +3,13 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { useState } from "react"
 import type { LineupPublic } from "@/client"
 import { SoccerService } from "@/client"
-import { DataTable } from "@/components/Common/DataTable"
+import {
+  DataTable,
+  type DataTableFeatures,
+} from "@/components/Common/DataTable"
 import { Input } from "@/components/ui/input"
 
-const columns: ColumnDef<LineupPublic>[] = [
+const columns: ColumnDef<DataTableFeatures, LineupPublic>[] = [
   {
     accessorKey: "jersey_number",
     header: "#",
