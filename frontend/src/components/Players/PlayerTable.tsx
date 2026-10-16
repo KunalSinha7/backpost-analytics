@@ -4,7 +4,10 @@ import { Search } from "lucide-react"
 import { useState } from "react"
 import type { PlayerPublic } from "@/client"
 import { SoccerService } from "@/client"
-import { DataTable } from "@/components/Common/DataTable"
+import {
+  DataTable,
+  type DataTableFeatures,
+} from "@/components/Common/DataTable"
 import { Input } from "@/components/ui/input"
 import { useTablePageSize } from "@/hooks/useTablePageSize"
 
@@ -29,7 +32,7 @@ export function PlayerTable() {
       }),
   })
 
-  const columns: ColumnDef<PlayerPublic>[] = [
+  const columns: ColumnDef<DataTableFeatures, PlayerPublic>[] = [
     {
       accessorKey: "name",
       header: "Name",

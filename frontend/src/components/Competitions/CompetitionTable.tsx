@@ -4,7 +4,10 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { useState } from "react"
 import type { CompetitionPublic } from "@/client"
 import { SoccerService } from "@/client"
-import { DataTable } from "@/components/Common/DataTable"
+import {
+  DataTable,
+  type DataTableFeatures,
+} from "@/components/Common/DataTable"
 import { EventDataBadge } from "@/components/Common/EventDataBadge"
 import { EventsOnlyFilter } from "@/components/Common/EventsOnlyFilter"
 import {
@@ -49,7 +52,7 @@ export function CompetitionTable() {
   )
   const pageData = filtered.slice(page * pageSize, (page + 1) * pageSize)
 
-  const columns: ColumnDef<CompetitionPublic>[] = [
+  const columns: ColumnDef<DataTableFeatures, CompetitionPublic>[] = [
     {
       accessorKey: "competition_name",
       header: "Competition",

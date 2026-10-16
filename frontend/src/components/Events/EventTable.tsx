@@ -4,7 +4,10 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { useState } from "react"
 import type { EventPublic } from "@/client"
 import { SoccerService } from "@/client"
-import { DataTable } from "@/components/Common/DataTable"
+import {
+  DataTable,
+  type DataTableFeatures,
+} from "@/components/Common/DataTable"
 import {
   Select,
   SelectContent,
@@ -22,7 +25,7 @@ function formatLocation(
   return `${x.toFixed(1)}, ${y.toFixed(1)}`
 }
 
-const columns: ColumnDef<EventPublic>[] = [
+const columns: ColumnDef<DataTableFeatures, EventPublic>[] = [
   {
     accessorKey: "index",
     header: "#",
