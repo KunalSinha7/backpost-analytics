@@ -38,7 +38,7 @@ def test_competition_list_all_returns_seeded(db: Session) -> None:
     repo = CompetitionRepository(db)
     rows, count = repo.list_all()
     assert count >= 1
-    assert any(c.statsbomb_id == 1001 for c, *_ in rows)
+    assert any(comp.external_id == "1001" for _, comp, *_ in rows)
 
 
 def test_competition_get_existing_keys(db: Session) -> None:
@@ -49,10 +49,12 @@ def test_competition_get_existing_keys(db: Session) -> None:
 
 
 def test_competition_get_by_statsbomb_key(db: Session) -> None:
-    create_competition(db, statsbomb_id=1003, season_id=1003)
+    created = create_competition(db, statsbomb_id=1003, season_id=1003)
     repo = CompetitionRepository(db)
     comp = repo.get_by_statsbomb_key(1003, 1003)
-    assert comp.statsbomb_id == 1003
+    # Identity rather than a field read: the source ids now live on the
+    # competition/season rows, so this asserts the join found the right edition.
+    assert comp.id == created.id
 
 
 def test_competition_get_by_statsbomb_key_not_found(db: Session) -> None:

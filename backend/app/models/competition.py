@@ -1,4 +1,5 @@
 import uuid
+from typing import NamedTuple
 
 from sqlalchemy import Column, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
@@ -44,8 +45,6 @@ class Season(SQLModel, table=True):
 class CompetitionSeasonBase(SQLModel):
     """One competition in one season — e.g. La Liga 2018/2019."""
 
-    statsbomb_id: int = Field(index=True)
-    season_id: int = Field(index=True)
     match_updated: str | None = Field(default=None, max_length=50)
     match_available: str | None = Field(default=None, max_length=50)
     match_updated_360: str | None = Field(default=None, max_length=50)
@@ -54,20 +53,30 @@ class CompetitionSeasonBase(SQLModel):
 
 class CompetitionSeason(CompetitionSeasonBase, table=True):
     __tablename__ = "competition_season"  # type: ignore[assignment]
-    __table_args__ = (UniqueConstraint("statsbomb_id", "season_id"),)
+    __table_args__ = (UniqueConstraint("competition_id", "season_id"),)
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     matches: list["SoccerMatch"] = Relationship(  # type: ignore  # noqa: F821
         back_populates="competition_season", cascade_delete=True
     )
     competition_id: uuid.UUID = Field(foreign_key="competition.id", index=True)
-    # Not named `season_id`: that name is taken by StatsBomb's integer season
-    # id above, which is part of the public API response and cannot be renamed
-    # without breaking clients.
-    season_ref_id: uuid.UUID = Field(foreign_key="season.id", index=True)
+    season_id: uuid.UUID = Field(foreign_key="season.id", index=True)
     # none_as_null: see the note on Lineup.raw.
     raw: dict | None = Field(
         default=None, sa_column=Column(JSONB(none_as_null=True), nullable=True)
     )
+
+
+class IngestedEdition(NamedTuple):
+    """An edition plus the source ids it was ingested under.
+
+    `competition_season` no longer stores StatsBomb's integer ids, so callers
+    that must talk back to the source (match ingest calls `sb.matches` with
+    them) carry them alongside the row rather than reading them off it.
+    """
+
+    edition: "CompetitionSeason"
+    competition_statsbomb_id: int
+    season_statsbomb_id: int
 
 
 class CompetitionPublic(CompetitionSeasonBase):

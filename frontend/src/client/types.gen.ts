@@ -39,14 +39,6 @@ export type BodyLoginLoginAccessToken = {
  */
 export type CompetitionPublic = {
     /**
-     * Statsbomb Id
-     */
-    statsbomb_id: number;
-    /**
-     * Season Id
-     */
-    season_id: number;
-    /**
      * Match Updated
      */
     match_updated?: string | null;

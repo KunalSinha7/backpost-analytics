@@ -80,7 +80,7 @@ class PlayerRepository:
                   -- CAST(), not ::uuid — a `::` immediately after a bind
                   -- parameter stops SQLAlchemy recognising it as one.
                   AND (CAST(:season_id AS uuid) IS NULL
-                       OR cs.season_ref_id = CAST(:season_id AS uuid))
+                       OR cs.season_id = CAST(:season_id AS uuid))
             ),
             bounded AS (
                 SELECT lineup_id, match_id, a, greatest(b, a) AS b FROM stints
@@ -132,5 +132,5 @@ class PlayerRepository:
             .order_by(func.count().desc())
         )
         if season_id is not None:
-            stmt = stmt.where(col(CompetitionSeason.season_ref_id) == season_id)
+            stmt = stmt.where(col(CompetitionSeason.season_id) == season_id)
         return [(name, int(count)) for name, count in self.session.exec(stmt).all()]

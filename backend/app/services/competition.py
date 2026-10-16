@@ -2,7 +2,12 @@ import logging
 
 from sqlmodel import Session
 
-from app.models.competition import Competition, CompetitionSeason, Season
+from app.models.competition import (
+    Competition,
+    CompetitionSeason,
+    IngestedEdition,
+    Season,
+)
 from app.repositories.competition import CompetitionRepository
 from app.services.resolver import EntityResolver
 from app.utils.statsbomb import StatsBombCompetitionRow
@@ -26,12 +31,12 @@ class CompetitionService:
             skip=skip, limit=limit, has_matches=has_matches, has_events=has_events
         )
 
-    def ingest(self) -> tuple[int, list[CompetitionSeason]]:
+    def ingest(self) -> tuple[int, list[IngestedEdition]]:
         from statsbombpy import sb  # type: ignore[import-untyped]
 
         existing = self.repo.get_existing_keys()
         imported = 0
-        all_competitions: list[CompetitionSeason] = []
+        all_competitions: list[IngestedEdition] = []
 
         for _, row in sb.competitions().iterrows():
             comp_row = StatsBombCompetitionRow.model_validate(row.to_dict())
@@ -58,10 +63,8 @@ class CompetitionService:
                     continue
 
                 comp = CompetitionSeason(
-                    statsbomb_id=cid,
-                    season_id=sid,
                     competition_id=competition.id,
-                    season_ref_id=season.id,
+                    season_id=season.id,
                     match_updated=comp_row.match_updated,
                     match_available=comp_row.match_available,
                     match_updated_360=comp_row.match_updated_360,
@@ -71,9 +74,11 @@ class CompetitionService:
                 self.repo.add(comp)
                 existing.add((cid, sid))
                 imported += 1
-                all_competitions.append(comp)
+                all_competitions.append(IngestedEdition(comp, cid, sid))
             else:
-                all_competitions.append(self.repo.get_by_statsbomb_key(cid, sid))
+                all_competitions.append(
+                    IngestedEdition(self.repo.get_by_statsbomb_key(cid, sid), cid, sid)
+                )
 
         logger.info("Competition ingest: %d new", imported)
         return imported, all_competitions

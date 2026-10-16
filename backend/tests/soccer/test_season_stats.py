@@ -3,9 +3,9 @@
 import uuid
 
 import pytest
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
-from app.models.competition import CompetitionSeason, Season
+from app.models.competition import Competition, CompetitionSeason, Season
 from app.models.lineup_position import LineupPosition
 from app.models.player import Player
 from app.services.lineup_position_backfill import (
@@ -119,10 +119,12 @@ def _season_fixture(
 
     player = db.exec(select(Player).where(Player.statsbomb_id == base)).one()
     edition = db.exec(
-        select(CompetitionSeason).where(CompetitionSeason.statsbomb_id == base)
+        select(CompetitionSeason)
+        .join(Competition, col(CompetitionSeason.competition_id) == Competition.id)
+        .where(Competition.external_id == str(base))
     ).one()
-    assert edition.season_ref_id is not None
-    return player.id, edition.season_ref_id
+    assert edition.season_id is not None
+    return player.id, edition.season_id
 
 
 _FULL_MATCH_STINT = [
